@@ -1,0 +1,148 @@
+<script setup>
+import moment from 'moment'
+import PageTitle from '../components/PageTitle.vue'
+import DoctorCard from '../components/DoctorCard.vue'
+import KeshiNav from '../components/KeshiNav.vue';
+import { computed, ref } from 'vue';
+import { useRoute } from 'vue-router';
+import { useKeshiStore } from '../stores/keshi'
+import { useDoctorStore } from "../stores/doctor";
+const keshiStore = useKeshiStore()
+const doctorStore = useDoctorStore()
+const route = useRoute();
+
+const weekdaysShort = '周日_周一_周二_周三_周四_周五_周六'.split('_')
+const datesFromToday = [];
+for (let i = 0; i < 7; i++) {
+    datesFromToday.push(moment().add(i, 'days'));
+}
+const showDate = ref(datesFromToday[0])
+
+if (route.query.keshi !== undefined) {
+    for (let i = 0; i < datesFromToday.length; i++) {
+        let date = datesFromToday[i]
+        let list = keshiStore.keshiListByDay[date.day()]
+        let index = list.findIndex(keshi => keshi.id == route.query.keshi)
+        if (index > -1) {
+            showDate.value = date
+            keshiStore.activeKeshi = list[index]
+            break;
+        }
+    }
+}
+
+const keshiList = computed(() => {
+    const list = keshiStore.keshiListByDay[showDate.value.day()]
+    if (list.findIndex(keshi => keshi.id == keshiStore.activeKeshi.id) == -1) {
+        keshiStore.activeKeshi = list[0]
+    }
+    return list
+})
+
+const doctorList = computed(() => {
+    return doctorStore.doctorList.filter(doctor => {
+        return doctor.keshi == keshiStore.activeKeshi.id &&
+            doctor.workat.findIndex(date => date == showDate.value.format('MM.DD')) > -1
+    });
+})
+
+function changeShowDate(date) {
+    showDate.value = date
+}
+</script>
+
+
+<template>
+    <page-title title="门诊排班" icon-name="icon-rili"></page-title>
+    <div class="top">
+        <ul class="date-nav">
+            <li v-for="(date, index) in datesFromToday" :key="index" class="date-item"
+                :class="{ 'is-active': showDate.date() == date.date() }" @click="changeShowDate(date)">
+                <p> {{ date.format('MM.DD') }}</p>
+                <p> {{ weekdaysShort[date.day()] }} </p>
+            </li>
+        </ul>
+    </div>
+
+    <div class="main">
+        <keshi-nav :keshi-list="keshiList"></keshi-nav>
+        <div class="keshi-detail">
+            <h3 class="sec-title">
+                {{ keshiStore.activeKeshi.name }}
+                {{ showDate.format('MM月DD日') }}
+                出诊医生
+            </h3>
+            <el-scrollbar max-height="calc(100% - 32px)">
+                <h3>坐诊时间 <text class="bold10">{{ keshiStore.activeKeshi.opTime }}</text></h3>
+                <h3 v-if="keshiStore.activeKeshi.hotline !== undefined">
+                    科室电话 <text class="bold10">{{ keshiStore.activeKeshi.hotline }}</text>
+                </h3>
+                <el-divider />
+                <div v-for="(doctor, index) in doctorList" :key="index">
+                    <doctor-card :name="doctor.name" :title="doctor.title" :goodat="doctor.goodat" :pic="doctor.pic" :web="doctor.web"></doctor-card>
+                </div>
+            </el-scrollbar>
+        </div>
+    </div>
+</template>
+  
+ 
+<style scoped>
+.top {
+    padding: px;
+    /* border: ; */
+}
+
+.main {
+    height: calc(100% - 140px);
+    display: flex;
+}
+
+ul {
+    padding-inline-start: 1px;
+}
+
+.date-nav {
+    display: flex;
+    flex-direction: row;
+    background-color: rgba(255, 255, 255, 0.3);
+    height: 70px;
+    list-style: none;
+    flex-wrap: wrap;
+}
+
+.date-item {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: justify;
+    border: 1px, solid, rgba(146, 222, 236, 0.493);
+}
+
+.is-active p {
+    /* background-color: rgba(146, 222, 236, 0.493); */
+    color: #9c0c15;
+    font-weight: 600;
+}
+
+
+.keshi-detail {
+    flex: 1;
+    background-color: rgba(255, 255, 255, 0.7);
+    padding: 10px 20px;
+}
+
+.bold10 {
+    font-weight: 700;
+    padding-left: 10px;
+}
+
+.sec-title {
+    padding-bottom: 10px;
+    font-weight: 700;
+    font-size: 20px;
+}
+</style>
+  

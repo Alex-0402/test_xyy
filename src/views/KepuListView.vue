@@ -1,0 +1,90 @@
+<script setup>
+import PageTitle from '../components/PageTitle.vue'
+import { useKepuStore } from '../stores/kepu';
+const kepuStore = useKepuStore();
+
+function openLink(url) {
+  window.location.href = url
+}
+
+const share = async (article) => {
+  if ('share' in navigator) {
+    try {
+      const shareData = {
+        title: article.title,
+        text: article.title,
+        url: "https://xyy.qd.sdu.edu.cn/kepuContent?id=" + article.id,
+      }
+      await navigator.share(shareData)
+      console.log('分享成功')
+    } catch (error) {
+      console.error('分享失败', error)
+    }
+  } else {
+    console.log('浏览器不支持Web Share API')
+  }
+}
+
+</script>
+
+<template>
+  <page-title title="健康科普" icon-name="icon-baojian"></page-title>
+  <div class="main">
+    <el-scrollbar max-height="100%">
+      <div v-for="(article, index) in kepuStore.kepuArticleList" :key="index" class="layout-single-image">
+        <div class="layout-single-image-l">
+          <div style="color:#333333;" @click="openLink(article.url)">
+            {{ article.title }}
+          </div>
+          <button v-if="kepuStore.showShare.isShow" style="width: fit-content;" @click="share(article)">分享</button>
+        </div>
+        <el-image :src="article.pic" fit="cover" class="image-content" @click="openLink(article.url)">
+        </el-image>
+      </div>
+    </el-scrollbar>
+  </div>
+</template>
+
+
+<style scoped>
+.main {
+  height: calc(100% - 80px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: rgba(97, 180, 215, 0.2);
+  margin: 0px 10px 10px;
+}
+
+.layout-single-image {
+  height: fit-content;
+  margin: 1em;
+  display: flex;
+  justify-content: space-between;
+  padding-bottom: 1em;
+  border-bottom: 0.8px solid rgb(183, 181, 181);
+}
+
+.layout-single-image-l {
+  display: flex;
+  flex-direction: column;
+  padding-right: 0.24rem;
+  font-size: 1.2rem;
+  height: fit-content;
+  max-width: 57vw;
+}
+
+.image-content {
+  width: calc(100vw * 580 /1920);
+  height: calc(100vw * 452 /1920);
+  max-width: 145px;
+  max-height: 113px;
+  border-radius: 4px;
+}
+</style>
+
+<style>
+.el-scrollbar__thumb {
+  display: none;
+}
+</style>
