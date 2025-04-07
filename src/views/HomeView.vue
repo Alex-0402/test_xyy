@@ -2,6 +2,7 @@
 import { reactive } from 'vue';
 import { RouterLink } from 'vue-router'
 import PageTitle from '../components/PageTitle.vue'
+import UserDropdown from '../components/UserDropdown.vue'
 import { Guide } from '@element-plus/icons-vue'
 
 const jkfwList = reactive([
@@ -19,44 +20,58 @@ const jkfwList = reactive([
 </script>
 
 <template>
-  <page-title title="健康服务" icon-name="icon-mianxingyiyuantubiao"></page-title>
+  <div class="home-page main-background">
+    <div class="header-container">
+      <user-dropdown></user-dropdown>
+    </div>
+    <page-title title="健康服务" icon-name="icon-mianxingyiyuantubiao"></page-title>
+    <el-row class="sect_content">
+      <el-col v-for="(item, index) in jkfwList" :key="index" :span="8">
+        <router-link :to="item.url">
+          <div class="grid-content">
+            <span class="iconfont" :class="item.iconName"></span>
+            <p>{{ item.servName }}</p>
+          </div>
+        </router-link>
+      </el-col>
+      <!-- temp -->
+      <!-- <el-col :span="8">
+        <a href="https://hq.qd.sdu.edu.cn/info/1014/2036.htm">
+          <div class="grid-content">
+            <el-icon class="iconfont" style="height: 80px;">
+              <Guide />
+            </el-icon>
+            <p>服务指南</p>
+          </div>
+        </a>
+      </el-col> -->
 
-  <el-row class="sect_content">
-    <el-col v-for="(item, index) in jkfwList" :key="index" :span="8">
-      <router-link :to="item.url">
-        <div class="grid-content">
-          <span class="iconfont" :class="item.iconName"></span>
-          <p>{{ item.servName }}</p>
-        </div>
-      </router-link>
-    </el-col>
-    <!-- temp -->
-    <!-- <el-col :span="8">
-      <a href="https://hq.qd.sdu.edu.cn/info/1014/2036.htm">
-        <div class="grid-content">
-          <el-icon class="iconfont" style="height: 80px;">
-            <Guide />
-          </el-icon>
-          <p>服务指南</p>
-        </div>
-      </a>
-    </el-col> -->
-
-    <!-- <el-col :span="8">
-      <router-link to="/">
-        <div class="grid-content">
-          <span class="iconfont icon-mianxingyaotubiao2 disabled"></span>
-          <p>药品预约</p>
-        </div>
-      </router-link>
-    </el-col> -->
-    <!-- temp -->
-  </el-row>
+      <!-- <el-col :span="8">
+        <router-link to="/">
+          <div class="grid-content">
+            <span class="iconfont icon-mianxingyaotubiao2 disabled"></span>
+            <p>药品预约</p>
+          </div>
+        </router-link>
+      </el-col> -->
+      <!-- temp -->
+    </el-row>
+  </div>
 </template>
 
 
 <style lang="scss" scoped>
 @import url('../assets/iconfont.css');
+
+.home-page {
+  min-height: 100vh;
+}
+
+.header-container {
+  position: relative;
+  width: 100%;
+  height: 60px;
+}
 
 .sect_content {
   padding: 0 30px;
