@@ -2,6 +2,7 @@
 import { RouterView } from 'vue-router';
 import Header from '@/components/Header.vue';
 import Footer from '@/components/Footer.vue';
+import '@/assets/styles/common.css'; // 引入全局样式
 </script>
 
 <template>
@@ -23,11 +24,6 @@ import Footer from '@/components/Footer.vue';
 
 .main-content {
   flex: 1; /* 让内容区域占据剩余空间 */
-}
-
-.main-background {
-  background: url(assets/sect1_bg.png) no-repeat center center;
-  background-size: cover;
 }
 
 main {

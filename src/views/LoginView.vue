@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { loginUser } from '../utils/auth';
 import ForgotPassword from '@/components/ForgotPassword.vue';
+import '@/assets/styles/common.css'; // 引入全局样式
 
 const router = useRouter();
 const loginForm = reactive({

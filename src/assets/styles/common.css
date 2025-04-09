@@ -1,0 +1,5 @@
+/* 通用背景样式 */
+.main-background {
+  background: url(../sect1_bg.png) no-repeat center center;
+  background-size: cover;
+}

@@ -7,6 +7,8 @@ import { computed, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { useKeshiStore } from '../stores/keshi'
 import { useDoctorStore } from "../stores/doctor";
+import '@/assets/styles/common.css'; // 引入全局样式
+
 const keshiStore = useKeshiStore()
 const doctorStore = useDoctorStore()
 const route = useRoute();
@@ -53,41 +55,49 @@ function changeShowDate(date) {
 
 
 <template>
-    <page-title title="门诊排班" icon-name="icon-rili"></page-title>
-    <div class="top">
-        <ul class="date-nav">
-            <li v-for="(date, index) in datesFromToday" :key="index" class="date-item"
-                :class="{ 'is-active': showDate.date() == date.date() }" @click="changeShowDate(date)">
-                <p> {{ date.format('MM.DD') }}</p>
-                <p> {{ weekdaysShort[date.day()] }} </p>
-            </li>
-        </ul>
-    </div>
+    <div class="guahao-page-wrapper main-background">
+        <page-title title="门诊排班" icon-name="icon-rili"></page-title>
+        <div class="top">
+            <ul class="date-nav">
+                <li v-for="(date, index) in datesFromToday" :key="index" class="date-item"
+                    :class="{ 'is-active': showDate.date() == date.date() }" @click="changeShowDate(date)">
+                    <p> {{ date.format('MM.DD') }}</p>
+                    <p> {{ weekdaysShort[date.day()] }} </p>
+                </li>
+            </ul>
+        </div>
 
-    <div class="main">
-        <keshi-nav :keshi-list="keshiList"></keshi-nav>
-        <div class="keshi-detail">
-            <h3 class="sec-title">
-                {{ keshiStore.activeKeshi.name }}
-                {{ showDate.format('MM月DD日') }}
-                出诊医生
-            </h3>
-            <el-scrollbar max-height="calc(100% - 32px)">
-                <h3>坐诊时间 <text class="bold10">{{ keshiStore.activeKeshi.opTime }}</text></h3>
-                <h3 v-if="keshiStore.activeKeshi.hotline !== undefined">
-                    科室电话 <text class="bold10">{{ keshiStore.activeKeshi.hotline }}</text>
+        <div class="main">
+            <keshi-nav :keshi-list="keshiList"></keshi-nav>
+            <div class="keshi-detail">
+                <h3 class="sec-title">
+                    {{ keshiStore.activeKeshi.name }}
+                    {{ showDate.format('MM月DD日') }}
+                    出诊医生
                 </h3>
-                <el-divider />
-                <div v-for="(doctor, index) in doctorList" :key="index">
-                    <doctor-card :name="doctor.name" :title="doctor.title" :goodat="doctor.goodat" :pic="doctor.pic" :web="doctor.web"></doctor-card>
-                </div>
-            </el-scrollbar>
+                <el-scrollbar max-height="calc(100% - 32px)">
+                    <h3>坐诊时间 <text class="bold10">{{ keshiStore.activeKeshi.opTime }}</text></h3>
+                    <h3 v-if="keshiStore.activeKeshi.hotline !== undefined">
+                        科室电话 <text class="bold10">{{ keshiStore.activeKeshi.hotline }}</text>
+                    </h3>
+                    <el-divider />
+                    <div v-for="(doctor, index) in doctorList" :key="index">
+                        <doctor-card :name="doctor.name" :title="doctor.title" :goodat="doctor.goodat" :pic="doctor.pic" :web="doctor.web"></doctor-card>
+                    </div>
+                </el-scrollbar>
+            </div>
         </div>
     </div>
 </template>
   
  
 <style scoped>
+.guahao-page-wrapper {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
 .top {
     padding: px;
     /* border: ; */
@@ -119,6 +129,7 @@ ul {
     justify-content: center;
     text-align: justify;
     border: 1px, solid, rgba(146, 222, 236, 0.493);
+    color: #333; /* 设置字体颜色为深灰色 */
 }
 
 .is-active p {
@@ -127,22 +138,23 @@ ul {
     font-weight: 600;
 }
 
-
 .keshi-detail {
     flex: 1;
     background-color: rgba(255, 255, 255, 0.7);
     padding: 10px 20px;
+    color: #333; /* 设置字体颜色为深灰色 */
 }
 
 .bold10 {
     font-weight: 700;
     padding-left: 10px;
+    color: #333; /* 设置字体颜色为深灰色 */
 }
 
 .sec-title {
     padding-bottom: 10px;
     font-weight: 700;
     font-size: 20px;
+    color: #333; /* 设置字体颜色为深灰色 */
 }
 </style>
-  

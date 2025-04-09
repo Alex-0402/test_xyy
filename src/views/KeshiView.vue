@@ -7,6 +7,7 @@ import { useRouter } from 'vue-router';
 import { useKeshiStore } from '../stores/keshi'
 import { useDoctorStore } from '../stores/doctor'
 import { ArrowRight } from '@element-plus/icons-vue'
+import '@/assets/styles/common.css'; // 引入全局样式
 
 const router = useRouter()
 const keshiStore = useKeshiStore()
@@ -30,46 +31,55 @@ function toGuahao() {
 
 
 <template>
-    <page-title title="科室设置" icon-name="icon-mianxingyishengtubiao3"></page-title>
-    <div class="main">
-        <keshi-nav :keshi-list="keshiStore.keshiList"></keshi-nav>
-        <div class="keshi-detail">
-            <h3 class="sec-title">{{ keshiStore.activeKeshi.name }}</h3>
-            <el-scrollbar max-height="calc(100% - 27px)">
-                <div>
-                    <h3>{{ keshiStore.activeKeshi.opDay }}</h3>
-                    <ul class="week">
-                        <li v-for="(item, index) in weekdaysShort" :key="index" class="list-item day"
-                            :class="{ 'is-work': keshiStore.activeKeshi.workDay[index] == 1 }">{{ item }}</li>
-                    </ul>
-                </div>
-                <h3>坐诊时间 <text class="bold10">{{ keshiStore.activeKeshi.opTime }}</text></h3>
-                <h3 v-if="keshiStore.activeKeshi.hotline !== undefined">
-                    科室电话 <text class="bold10">{{ keshiStore.activeKeshi.hotline }}</text>
-                </h3>
-                <el-divider />
-                <div class="keshi-header">
-                    <h3 class="sec-title">科室医生</h3>
-                    <el-button type="primary" text @click="toGuahao">
-                        查看排班
-                        <el-icon class="el-icon--right">
-                            <ArrowRight />
-                        </el-icon>
-                    </el-button>
-                </div>
-                <div v-for="(doctor, index) in doctorList" :key="index">
-                    <doctor-card :name="doctor.name" :title="doctor.title" :goodat="doctor.goodat" :pic="doctor.pic" :web="doctor.web"></doctor-card>
-                </div>
-            </el-scrollbar>
+    <div class="keshi-page-wrapper main-background">
+        <page-title title="科室设置" icon-name="icon-mianxingyishengtubiao3"></page-title>
+        <div class="main">
+            <keshi-nav :keshi-list="keshiStore.keshiList"></keshi-nav>
+            <div class="keshi-detail">
+                <h3 class="sec-title">{{ keshiStore.activeKeshi.name }}</h3>
+                <el-scrollbar max-height="calc(100% - 27px)">
+                    <div>
+                        <h3>{{ keshiStore.activeKeshi.opDay }}</h3>
+                        <ul class="week">
+                            <li v-for="(item, index) in weekdaysShort" :key="index" class="list-item day"
+                                :class="{ 'is-work': keshiStore.activeKeshi.workDay[index] == 1 }">{{ item }}</li>
+                        </ul>
+                    </div>
+                    <h3>坐诊时间 <text class="bold10">{{ keshiStore.activeKeshi.opTime }}</text></h3>
+                    <h3 v-if="keshiStore.activeKeshi.hotline !== undefined">
+                        科室电话 <text class="bold10">{{ keshiStore.activeKeshi.hotline }}</text>
+                    </h3>
+                    <el-divider />
+                    <div class="keshi-header">
+                        <h3 class="sec-title">科室医生</h3>
+                        <el-button type="primary" text @click="toGuahao">
+                            查看排班
+                            <el-icon class="el-icon--right">
+                                <ArrowRight />
+                            </el-icon>
+                        </el-button>
+                    </div>
+                    <div v-for="(doctor, index) in doctorList" :key="index">
+                        <doctor-card :name="doctor.name" :title="doctor.title" :goodat="doctor.goodat" :pic="doctor.pic" :web="doctor.web"></doctor-card>
+                    </div>
+                </el-scrollbar>
+            </div>
         </div>
     </div>
 </template>
   
  
 <style scoped>
+.keshi-page-wrapper {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
 .main {
     height: calc(100% - 70px);
     display: flex;
+    flex: 1;
 }
 
 ul {
@@ -80,6 +90,7 @@ ul {
     flex: 1;
     background-color: rgba(255, 255, 255, 0.7);
     padding: 20px;
+    color: #333; /* 设置字体颜色为深灰色 */
 }
 
 .keshi-header {
@@ -94,7 +105,7 @@ ul {
     text-align: center;
     border-bottom: 1px solid #ebecf1;
     background: rgba(245, 246, 247, 0.7);
-    color: rgb(40, 53, 76);
+    color: #333; /* 设置字体颜色为深灰色 */
     font-size: 14px;
 }
 

@@ -3,6 +3,7 @@ import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { isAuthenticated, setSecurityQuestions } from '../utils/auth';
+import '@/assets/styles/common.css'; // 引入全局样式
 
 const router = useRouter();
 const loading = ref(false);

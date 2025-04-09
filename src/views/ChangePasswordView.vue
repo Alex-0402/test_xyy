@@ -6,6 +6,7 @@ import { isAuthenticated, changePassword as authChangePassword } from '@/utils/a
 
 import eyeOpen from '@/assets/eye_open.png';
 import eyeClose from '@/assets/eye_close.png';
+import '@/assets/styles/common.css'; // 引入全局样式
 
 const router = useRouter();
 const oldPassword = ref('');

@@ -4,6 +4,7 @@ import { RouterLink } from 'vue-router'
 import PageTitle from '../components/PageTitle.vue'
 import UserDropdown from '../components/UserDropdown.vue'
 import { Guide } from '@element-plus/icons-vue'
+import '@/assets/styles/common.css'; // 引入全局样式
 
 const jkfwList = reactive([
   { iconName: "icon-mianxingyishengtubiao3", servName: "校医院概况", url: '/gaikuang' },

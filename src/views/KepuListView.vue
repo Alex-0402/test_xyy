@@ -1,6 +1,7 @@
 <script setup>
 import PageTitle from '../components/PageTitle.vue'
 import { useKepuStore } from '../stores/kepu';
+import '@/assets/styles/common.css'; // 引入全局样式
 const kepuStore = useKepuStore();
 
 function openLink(url) {
@@ -28,32 +29,41 @@ const share = async (article) => {
 </script>
 
 <template>
-  <page-title title="健康科普" icon-name="icon-baojian"></page-title>
-  <div class="main">
-    <el-scrollbar max-height="100%">
-      <div v-for="(article, index) in kepuStore.kepuArticleList" :key="index" class="layout-single-image">
-        <div class="layout-single-image-l">
-          <div style="color:#333333;" @click="openLink(article.url)">
-            {{ article.title }}
+  <div class="kepu-page-wrapper main-background">
+    <page-title title="健康科普" icon-name="icon-baojian"></page-title>
+    <div class="main">
+      <el-scrollbar max-height="100%">
+        <div v-for="(article, index) in kepuStore.kepuArticleList" :key="index" class="layout-single-image">
+          <div class="layout-single-image-l">
+            <div style="color:#333333;" @click="openLink(article.url)">
+              {{ article.title }}
+            </div>
+            <button v-if="kepuStore.showShare.isShow" style="width: fit-content;" @click="share(article)">分享</button>
           </div>
-          <button v-if="kepuStore.showShare.isShow" style="width: fit-content;" @click="share(article)">分享</button>
+          <el-image :src="article.pic" fit="cover" class="image-content" @click="openLink(article.url)">
+          </el-image>
         </div>
-        <el-image :src="article.pic" fit="cover" class="image-content" @click="openLink(article.url)">
-        </el-image>
-      </div>
-    </el-scrollbar>
+      </el-scrollbar>
+    </div>
   </div>
 </template>
 
-
 <style scoped>
+.kepu-page-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
 .main {
   height: calc(100% - 80px);
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   background-color: rgba(97, 180, 215, 0.2);
   margin: 0px 10px 10px;
+  border-radius: 8px;
 }
 
 .layout-single-image {
