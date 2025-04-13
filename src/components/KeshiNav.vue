@@ -25,6 +25,11 @@ function changeNav(keshi) {
                 {{ keshi.name }}
             </li>
         </ul>
+        <ul>
+            <li class="keshi-nav-item" :class="{'is-button':true}" @click="showNamePutter">
+                添加科室
+            </li>
+        </ul>
     </el-scrollbar>
 </template>
 
@@ -44,6 +49,12 @@ ul {
 .keshi-nav .is-active {
     background-color: white;
     color:#9c0c15;
+    font-weight: 550;
+}
+
+.keshi-nav .is-button {
+    background-color: #9c0c15;
+    color:#ffffff;
     font-weight: 550;
 }
 

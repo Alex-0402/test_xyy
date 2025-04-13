@@ -10,6 +10,11 @@ import 'element-plus/dist/index.css'
 import axios from 'axios' // 添加这行以确保 axios 被导入
 import { setupAxiosInterceptors } from './utils/auth'
 
+// 在开发环境中使用模拟数据
+if (process.env.NODE_ENV === 'development') {
+  import('./mock');
+}
+
 // 设置 axios 为全局可用（可选）
 const app = createApp(App)
 app.config.globalProperties.$axios = axios

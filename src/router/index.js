@@ -86,7 +86,22 @@ const router = createRouter({
       path:'/security-questions',
       name:'安全问题设置',
       component: () => import('../views/SecurityQuestionsView.vue')
-    }
+    },
+    {
+      path: '/doctor-info',
+      name: '修改医生个人资料卡',
+      component: () => import('../views/DoctorInfoCollect.vue')
+    },
+    {
+      path: '/change-keshi',
+      name: '修改值班信息',
+      component: () => import('../views/ChangeKeShiView.vue')
+    },
+    {
+      path: '/add-keshi-info',
+      name: '修改科室信息',
+      component: () => import('../views/DepartmentInfoCollect.vue')
+    },
   ]
 })
 

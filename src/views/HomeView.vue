@@ -18,6 +18,13 @@ const jkfwList = reactive([
   { iconName: "icon-mianxingyishengtubiao3", servName: "校医院新闻", url: '/xinwen' },
   { iconName: "icon-baojian", servName: "健康科普", url: "/kepuList" },
 ])
+
+const adminList = reactive([
+  { iconName: "icon-mianxingyishengtubiao3", servName: "医生信息管理", url: "/doctor-info" },
+  { iconName: "icon-rili", servName: "排班管理", url: "/change-keshi" },
+  { iconName: "icon-baojian", servName: "通知管理", url: "/tongzhi-manage" },
+  { iconName: "icon-mianxingshizibiaozhitubiao", servName: "系统设置", url: "/add-keshi-info" },
+])
 </script>
 
 <template>
@@ -56,6 +63,19 @@ const jkfwList = reactive([
         </router-link>
       </el-col> -->
       <!-- temp -->
+    </el-row>
+    <div class="header-container">
+    </div>
+    <page-title title="健康服务" icon-name="icon-mianxingyiyuantubiao"></page-title>
+    <el-row class="sect_content">
+      <el-col v-for="(item, index) in adminList" :key="index" :span="8">
+        <router-link :to="item.url">
+          <div class="grid-content">
+            <span class="iconfont" :class="item.iconName"></span>
+            <p>{{ item.servName }}</p>
+          </div>
+        </router-link>
+      </el-col>
     </el-row>
   </div>
 </template>
