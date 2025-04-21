@@ -1,8 +1,8 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import PageTitle from '../components/PageTitle.vue';
-import UserDropdown from '../components/UserDropdown.vue';
+import PageTitle from '../../components/PageTitle.vue';
+import UserDropdown from '../../components/UserDropdown.vue';
 import axios from 'axios';
 
 // 单个科室信息的数据结构

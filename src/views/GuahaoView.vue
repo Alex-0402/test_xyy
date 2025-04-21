@@ -3,7 +3,7 @@ import moment from 'moment'
 import PageTitle from '../components/PageTitle.vue'
 import DoctorCard from '../components/DoctorCard.vue'
 import KeshiNav from '../components/KeshiNav.vue';
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { useRoute } from 'vue-router';
 import { useKeshiStore } from '../stores/keshi'
 import { useDoctorStore } from "../stores/doctor";
@@ -24,26 +24,73 @@ const firstWeekDates = datesFromToday.slice(0, 7);
 const secondWeekDates = datesFromToday.slice(7, 14);
 
 const showDate = ref(datesFromToday[0])
+const currentKeshiId = ref(null)
 
-if (route.query.keshi !== undefined) {
-    for (let i = 0; i < datesFromToday.length; i++) {
-        let date = datesFromToday[i]
-        let list = keshiStore.keshiListByDay[date.day()]
-        let index = list.findIndex(keshi => keshi.id == route.query.keshi)
-        if (index > -1) {
-            showDate.value = date
-            keshiStore.activeKeshi = list[index]
-            break;
-        }
+// 检查日期是否有排班
+const hasScheduleForDate = (date) => {
+    // 获取当前日期的医生列表
+    const dayDoctors = doctorStore.doctorList.filter(doctor => {
+        return doctor.keshi == currentKeshiId.value &&
+            doctor.workat.findIndex(workDate => workDate == date.format('MM.DD')) > -1
+    });
+    return dayDoctors.length > 0;
+}
+
+// 计算每个日期是否有排班
+const dateHasSchedule = computed(() => {
+    const result = {};
+    datesFromToday.forEach(date => {
+        result[date.format('MM.DD')] = hasScheduleForDate(date);
+    });
+    return result;
+});
+
+// 切换显示日期的函数，只允许切换到有排班的日期
+function changeShowDate(date) {
+    if (dateHasSchedule.value[date.format('MM.DD')]) {
+        showDate.value = date;
     }
 }
 
-const keshiList = computed(() => {
-    const list = keshiStore.keshiListByDay[showDate.value.day()]
-    if (list.findIndex(keshi => keshi.id == keshiStore.activeKeshi.id) == -1) {
-        keshiStore.activeKeshi = list[0]
+onMounted(() => {
+    // 从路由参数获取科室ID
+    if (route.query.keshi !== undefined) {
+        currentKeshiId.value = route.query.keshi;
+        
+        // 查找该科室在哪一天有排班，并设置为默认显示日期
+        for (let i = 0; i < datesFromToday.length; i++) {
+            let date = datesFromToday[i];
+            let list = keshiStore.keshiListByDay[date.day()];
+            let index = list.findIndex(keshi => keshi.id == currentKeshiId.value);
+            
+            if (index > -1 && hasScheduleForDate(date)) {
+                showDate.value = date;
+                keshiStore.activeKeshi = list[index];
+                break;
+            }
+        }
     }
-    return list
+})
+
+const keshiList = computed(() => {
+    // 只返回当前科室，无论是哪一天
+    if (currentKeshiId.value) {
+        // 从全部科室列表中找到当前科室
+        const allKeshis = keshiStore.keshiList;
+        const currentKeshi = allKeshis.find(keshi => keshi.id == currentKeshiId.value);
+        if (currentKeshi) {
+            // 确保 activeKeshi 设置为当前科室
+            keshiStore.activeKeshi = currentKeshi;
+            return [currentKeshi]; // 只返回当前科室
+        }
+    }
+    
+    // 兜底处理，如果没找到当前科室，则使用原逻辑
+    const list = keshiStore.keshiListByDay[showDate.value.day()];
+    if (list.findIndex(keshi => keshi.id == keshiStore.activeKeshi.id) == -1) {
+        keshiStore.activeKeshi = list[0];
+    }
+    return list;
 })
 
 const doctorList = computed(() => {
@@ -52,10 +99,6 @@ const doctorList = computed(() => {
             doctor.workat.findIndex(date => date == showDate.value.format('MM.DD')) > -1
     });
 })
-
-function changeShowDate(date) {
-    showDate.value = date
-}
 </script>
 
 
@@ -66,14 +109,22 @@ function changeShowDate(date) {
             <!-- 两周日期分成上下两排显示 -->
             <ul class="date-nav">
                 <li v-for="(date, index) in firstWeekDates" :key="'week1-' + index" class="date-item"
-                    :class="{ 'is-active': showDate.date() == date.date() }" @click="changeShowDate(date)">
+                    :class="{ 
+                      'is-active': showDate.date() == date.date(), 
+                      'no-schedule': !dateHasSchedule[date.format('MM.DD')] 
+                    }" 
+                    @click="changeShowDate(date)">
                     <p>{{ date.format('MM.DD') }}</p>
                     <p>{{ weekdaysShort[date.day()] }}</p>
                 </li>
             </ul>
             <ul class="date-nav">
                 <li v-for="(date, index) in secondWeekDates" :key="'week2-' + index" class="date-item"
-                    :class="{ 'is-active': showDate.date() == date.date() }" @click="changeShowDate(date)">
+                    :class="{ 
+                      'is-active': showDate.date() == date.date(), 
+                      'no-schedule': !dateHasSchedule[date.format('MM.DD')] 
+                    }" 
+                    @click="changeShowDate(date)">
                     <p>{{ date.format('MM.DD') }}</p>
                     <p>{{ weekdaysShort[date.day()] }}</p>
                 </li>
@@ -137,11 +188,22 @@ function changeShowDate(date) {
     text-align: justify;
     border: 1px solid rgba(146, 222, 236, 0.493);
     color: #333;
+    cursor: pointer;
 }
 
 .is-active p {
     color: #9c0c15;
     font-weight: 600;
+}
+
+.no-schedule {
+    background-color: rgba(200, 200, 200, 0.5);
+    color: #999;
+    cursor: not-allowed;
+}
+
+.no-schedule p {
+    color: #999;
 }
 
 .main {

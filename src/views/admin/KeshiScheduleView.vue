@@ -1,8 +1,8 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { useKeshiStore } from '../stores/keshi';
-import PageTitle from '../components/PageTitle.vue';
-import UserDropdown from '../components/UserDropdown.vue';
+import { useKeshiStore } from '../../stores/keshi';
+import PageTitle from '../../components/PageTitle.vue';
+import UserDropdown from '../../components/UserDropdown.vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import '@/assets/styles/common.css';
 

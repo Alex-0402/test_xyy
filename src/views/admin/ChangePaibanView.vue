@@ -1,11 +1,11 @@
 <script setup>
 import moment from 'moment'
-import PageTitle from '../components/PageTitle.vue'
-import KeshiNav from '../components/KeshiNav.vue';
-import UserDropdown from '../components/UserDropdown.vue';
+import PageTitle from '../../components/PageTitle.vue'
+import KeshiNav from '../../components/KeshiNav.vue';
+import UserDropdown from '../../components/UserDropdown.vue';
 import { computed, ref, reactive, onMounted } from 'vue';
-import { useKeshiStore } from '../stores/keshi'
-import { useDoctorStore } from "../stores/doctor";
+import { useKeshiStore } from '../../stores/keshi'
+import { useDoctorStore } from "../../stores/doctor";
 import { ElMessage, ElMessageBox } from 'element-plus';
 import '@/assets/styles/common.css';
 

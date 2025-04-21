@@ -97,22 +97,22 @@ const router = createRouter({
     {
       path: '/doctor-info',
       name: '修改医生个人资料卡',
-      component: () => import('../views/DoctorInfoCollect.vue')
+      component: () => import('../views/admin/DoctorInfoCollect.vue')
     },
     {
       path: '/change-keshi',
       name: '修改值班信息',
-      component: () => import('../views/ChangePaibanView.vue')
+      component: () => import('../views/admin/ChangePaibanView.vue')
     },
     {
       path: '/add-keshi-info',
       name: '修改科室信息',
-      component: () => import('../views/DepartmentInfoCollect.vue')
+      component: () => import('../views/admin/DepartmentInfoCollect.vue')
     },
     {
       path: '/keshi-schedule',
       name: '科室排班管理',
-      component: () => import('../views/KeshiScheduleView.vue')
+      component: () => import('../views/admin/KeshiScheduleView.vue')
     },
     {
       path: '/tongzhi-manage',

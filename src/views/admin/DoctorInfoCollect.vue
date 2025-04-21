@@ -1,11 +1,11 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
 import { ElMessage } from 'element-plus';
-import PageTitle from '../components/PageTitle.vue';
-import UserDropdown from '../components/UserDropdown.vue';
+import PageTitle from '../../components/PageTitle.vue';
+import UserDropdown from '../../components/UserDropdown.vue';
 import axios from 'axios';
-import { useDoctorStore } from '../stores/doctor';
-import { useKeshiStore } from '../stores/keshi';
+import { useDoctorStore } from '../../stores/doctor';
+import { useKeshiStore } from '../../stores/keshi';
 
 const doctorStore = useDoctorStore();
 const keshiStore = useKeshiStore();
