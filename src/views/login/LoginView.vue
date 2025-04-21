@@ -2,8 +2,7 @@
 import { ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { loginUser } from '../utils/auth';
-import ForgotPassword from '@/components/ForgotPassword.vue';
+import { loginUser } from '../../utils/auth';
 import '@/assets/styles/common.css'; // 引入全局样式
 
 const router = useRouter();
@@ -14,7 +13,6 @@ const loginForm = reactive({
 });
 
 const loading = ref(false);
-const showForgotPassword = ref(false);
 const passwordVisible = ref(false); // 控制密码显示状态
 
 // 登录操作
@@ -30,10 +28,12 @@ const handleLogin = async () => {
     const response = await loginUser(loginForm.username, loginForm.password);
     
     if (response.status === 999) {
+      // 保存用户名，用于后续使用
+      localStorage.setItem('current_username', loginForm.username);
       ElMessage.success('登录成功');
       router.push('/');
     } else {
-      ElMessage.error(response.message || '登录失败');
+      ElMessage.error(response.message || '用户名或密码错误');
     }
   } catch (error) {
     console.error('登录错误', error);
@@ -43,9 +43,9 @@ const handleLogin = async () => {
   }
 };
 
-// 切换到忘记密码页面
-const toggleForgotPassword = () => {
-  showForgotPassword.value = !showForgotPassword.value;
+// 跳转到忘记密码页面
+const goToForgotPassword = () => {
+  router.push('/forgot-password');
 };
 
 const goBack = () => {
@@ -56,7 +56,7 @@ const goBack = () => {
 <template>
   <div class="login-page main-background">
     <!-- 正常登录表单 -->
-    <div class="login-box" v-if="!showForgotPassword">
+    <div class="login-box">
       <div class="login-header">
         <h2>管理员登录</h2>
         <div class="back-button" @click="goBack">返回主页</div>
@@ -92,7 +92,7 @@ const goBack = () => {
             <el-checkbox v-model="loginForm.remember">记住我</el-checkbox>
           </div>
           <div class="forget-pwd-container">
-            <a href="javascript:;" class="forget-pwd" @click="toggleForgotPassword">忘记密码?</a>
+            <a href="javascript:;" class="forget-pwd" @click="goToForgotPassword">忘记密码?</a>
           </div>
         </el-form-item>
         <el-form-item>
@@ -100,9 +100,6 @@ const goBack = () => {
         </el-form-item>
       </el-form>
     </div>
-    
-    <!-- 忘记密码表单，将在ForgotPassword组件中实现 -->
-    <forgot-password v-else @back="toggleForgotPassword"></forgot-password>
   </div>
 </template>
 

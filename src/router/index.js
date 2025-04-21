@@ -80,17 +80,22 @@ const router = createRouter({
     {
       path:'/login',
       name:'登录',
-      component: () => import('../views/LoginView.vue')
+      component: () => import('../views/login/LoginView.vue')
+    },
+    {
+      path:'/forgot-password',
+      name:'忘记密码',
+      component: () => import('../views/login/ForgotPasswordView.vue')
     },
     {
       path:'/change-password',
       name:'修改密码',
-      component: () => import('../views/ChangePasswordView.vue')
+      component: () => import('../views/login/ChangePasswordView.vue')
     },
     {
       path:'/security-questions',
       name:'安全问题设置',
-      component: () => import('../views/SecurityQuestionsView.vue')
+      component: () => import('../views/login/SecurityQuestionsView.vue')
     },
 
     // 管理员页面

@@ -9,12 +9,13 @@ import {
   mockSetSecurityQuestions 
 } from './mockApi';
 
-const BASE_URL = 'http://localhost:8000/api';
+// 修改为实际后端服务器地址
+const BASE_URL = 'http://38.38.251.86:8000/api';
 const TOKEN_KEY = 'access_token';
 const REFRESH_KEY = 'refresh_token';
 
-// 开发模式标志，设置为true以使用模拟API
-export const USE_MOCK_API = true;
+// 将开发模式标志设置为 false，使用真实 API
+export const USE_MOCK_API = false;
 
 // 检查用户是否已登录
 export const isAuthenticated = () => {
@@ -68,13 +69,27 @@ export const loginUser = async (username, password) => {
       });
       
       if (response.data.status === 999) {
+        // 保存 refresh token
         setRefreshToken(response.data.refresh);
+        
+        // 刷新获取 access token
+        const refreshResponse = await axios.post(`${BASE_URL}/token/refresh/`, {
+          refresh: response.data.refresh
+        });
+        
+        if (refreshResponse.data.status === 999) {
+          setAccessToken(refreshResponse.data.access);
+        }
+        
+        return response.data;
+      } else {
+        return response.data;
       }
-      return response.data;
     } catch (error) {
+      console.error('登录错误:', error);
       return {
         status: 1000,
-        message: error.response?.data?.message || '登录失败，请检查网络连接'
+        message: error.response?.data?.message || '用户名或密码错误'
       };
     }
   }
@@ -89,24 +104,25 @@ export const refreshAccessToken = async () => {
   
   if (USE_MOCK_API) {
     return refreshAccessTokenFromMock(refreshToken);
-  }
-  
-  try {
-    const response = await axios.post(`${BASE_URL}/token/refresh/`, {
-      refresh: refreshToken
-    });
-    
-    if (response.data.status === 999) {
-      const accessToken = response.data.access;
-      setAccessToken(accessToken);
-      return accessToken;
-    } else {
+  } else {
+    try {
+      const response = await axios.post(`${BASE_URL}/token/refresh/`, {
+        refresh: refreshToken
+      });
+      
+      if (response.data.status === 999) {
+        const accessToken = response.data.access;
+        setAccessToken(accessToken);
+        return accessToken;
+      } else {
+        clearTokens();
+        return Promise.reject(new Error(response.data.message || 'Failed to refresh token'));
+      }
+    } catch (error) {
+      console.error('刷新令牌错误:', error);
       clearTokens();
-      return Promise.reject(new Error(response.data.message || 'Failed to refresh token'));
+      return Promise.reject(error);
     }
-  } catch (error) {
-    clearTokens();
-    return Promise.reject(error);
   }
 };
 
@@ -146,6 +162,7 @@ export const logoutUser = async () => {
       clearTokens();
       return { status: 999, message: '登出成功' };
     } catch (error) {
+      console.error('登出错误:', error);
       clearTokens();
       return { status: 1000, message: '登出过程中发生错误' };
     }
@@ -154,7 +171,7 @@ export const logoutUser = async () => {
 
 // 修改密码
 export const changePassword = async (oldPassword, newPassword) => {
-  try {
+  if (USE_MOCK_API) {
     console.log('修改密码参数:', { oldPassword, newPassword });
     
     if (USE_MOCK_API) {
@@ -168,9 +185,36 @@ export const changePassword = async (oldPassword, newPassword) => {
       console.log('真实修改密码响应:', response);
       return response;
     }
-  } catch (error) {
-    console.error('修改密码错误:', error);
-    throw error;
+  } else {
+    try {
+      const token = getAccessToken();
+      
+      if (!token) {
+        return { status: 1006, message: '请先登录' };
+      }
+      
+      const response = await axios.post(`${BASE_URL}/change-password/`, {
+        old_password: oldPassword,
+        new_password: newPassword
+      }, {
+        headers: {
+          'Authorization': `Bearer ${token}`
+        }
+      });
+      
+      return response.data;
+    } catch (error) {
+      console.error('修改密码错误:', error);
+      
+      if (error.response?.status === 400) {
+        return { status: 1000, message: '旧密码错误' };
+      }
+      
+      return {
+        status: 1000,
+        message: error.response?.data?.message || '密码修改失败'
+      };
+    }
   }
 };
 
@@ -183,9 +227,10 @@ export const getUserSecurityQuestions = async (username) => {
       const response = await axios.get(`${BASE_URL}/user-security-questions/${username}/`);
       return response.data;
     } catch (error) {
+      console.error('获取安全问题错误:', error);
       return {
         status: 1000,
-        message: error.response?.data?.message || '获取安全问题失败'
+        message: error.response?.data?.message || '该用户未设置安全问题'
       };
     }
   }
@@ -206,9 +251,10 @@ export const resetPassword = async (username, questionId, answer, newPassword) =
       
       return response.data;
     } catch (error) {
+      console.error('重置密码错误:', error);
       return {
         status: 1000,
-        message: error.response?.data?.message || '密码重置失败'
+        message: error.response?.data?.message || '安全问题答案错误'
       };
     }
   }
@@ -255,8 +301,8 @@ export const setSecurityQuestions = async (questions) => {
 
 // 为axios配置请求拦截器，在每个请求前检查token是否有效
 export const setupAxiosInterceptors = () => {
-  // 如果使用模拟API，则不需要配置拦截器
-  if (USE_MOCK_API) return;
+  // 全局配置
+  axios.defaults.timeout = 10000; // 10秒超时
   
   axios.interceptors.response.use(
     (response) => response,

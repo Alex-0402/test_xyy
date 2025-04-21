@@ -1,28 +1,68 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { isAuthenticated, setSecurityQuestions } from '../utils/auth';
+import { isAuthenticated, setSecurityQuestions, getUserSecurityQuestions } from '../../utils/auth';
 import '@/assets/styles/common.css'; // 引入全局样式
 
 const router = useRouter();
 const loading = ref(false);
+const fetchingQuestions = ref(false);
 
 // 安全问题列表
 const questions = ref([
   { question: '', answer: '' }
 ]);
 
-// 检查用户是否已登录
-onMounted(() => {
+// 获取当前登录用户的用户名
+const getCurrentUsername = () => {
+  // 通常存储在JWT中或本地存储中
+  // 这里简单实现，实际中应该从JWT解码或其他地方获取
+  return localStorage.getItem('current_username') || 'test_admin';
+};
+
+// 检查用户是否已登录，并获取已有的安全问题
+onMounted(async () => {
   if (!isAuthenticated()) {
     ElMessage.warning('请先登录');
     router.push('/login');
-  } else {
-    console.log('用户已登录，访问令牌存在');
-    console.log('当前访问令牌:', localStorage.getItem('access_token'));
+    return;
   }
+  
+  await fetchExistingQuestions();
 });
+
+// 获取已有的安全问题
+const fetchExistingQuestions = async () => {
+  fetchingQuestions.value = true;
+  
+  try {
+    const username = getCurrentUsername();
+    ElMessage.info('正在获取已设置的安全问题...');
+    
+    const response = await getUserSecurityQuestions(username);
+    console.log('获取安全问题响应:', response);
+    
+    if (response.status === 999 && response.data && response.data.length > 0) {
+      // 创建新的问题数组，包含问题但不包含答案（答案需要用户重新填写）
+      questions.value = response.data.map(item => ({
+        id: item.id,
+        question: item.question,
+        answer: ''  // 答案为空，需要用户填写
+      }));
+      
+      ElMessage.success('已加载您设置的安全问题，请填写答案');
+    } else if (response.status === 1000) {
+      // 用户未设置安全问题，保持默认空表单
+      ElMessage.info('您尚未设置安全问题，请设置');
+    }
+  } catch (error) {
+    console.error('获取安全问题失败:', error);
+    ElMessage.error('获取安全问题失败，请稍后再试');
+  } finally {
+    fetchingQuestions.value = false;
+  }
+};
 
 // 添加安全问题
 const addQuestion = () => {
@@ -61,7 +101,7 @@ const saveQuestions = async () => {
       ElMessage.success('安全问题设置成功');
       router.push('/');
     } else {
-      ElMessage.error(response?.message || '安全问题设置失败');
+      ElMessage.error(response.message || '安全问题设置失败');
     }
   } catch (error) {
     console.error('设置安全问题错误', error);
@@ -88,13 +128,20 @@ const goBack = () => {
         
         <p class="description">设置安全问题可以帮助您在忘记密码时重置密码（最多3个问题）</p>
         
-        <el-form class="security-questions-form">
+        <div v-if="fetchingQuestions" class="loading-container">
+          <el-skeleton :rows="3" animated />
+          <div class="loading-text">正在获取已设置的安全问题...</div>
+        </div>
+        
+        <el-form class="security-questions-form" v-else>
           <div v-for="(item, index) in questions" :key="index" class="question-item">
             <el-form-item>
-              <el-input v-model="item.question" placeholder="安全问题">
-                <template #prefix>
-                  <el-icon class="el-icon-question"></el-icon>
-                </template>
+              <el-input 
+              v-model="item.question" 
+              placeholder="安全问题">
+              <template #prefix>
+                <el-icon class="el-icon-question"></el-icon>
+              </template>
               </el-input>
             </el-form-item>
             <el-form-item>
@@ -172,6 +219,25 @@ const goBack = () => {
 .description {
   color: #666;
   margin-bottom: 20px;
+}
+
+.loading-container {
+  padding: 20px 0;
+  text-align: center;
+}
+
+.loading-text {
+  margin-top: 15px;
+  color: #666;
+  font-size: 14px;
+}
+
+.question-item {
+  padding: 15px;
+  border: 1px solid #eee;
+  border-radius: 5px;
+  margin-bottom: 15px;
+  position: relative;
 }
 
 .security-questions-form {
