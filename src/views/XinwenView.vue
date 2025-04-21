@@ -1,8 +1,8 @@
 <script setup>
 import PageTitle from '../components/PageTitle.vue'
-import { useTongzhiStore } from '../stores/tongzhi';
+import { useXinwenStore } from '../stores/xinwen';
 import '@/assets/styles/common.css'; // 引入全局样式
-const tongzhiStore = useTongzhiStore();
+const xinwenStore = useXinwenStore();
 
 function openLink(url) {
   window.location.href = url
@@ -14,7 +14,7 @@ const share = async (article) => {
       const shareData = {
         title: article.title,
         text: article.title,
-        url: "https://xyy.qd.sdu.edu.cn/tongzhiContent?id=" + article.id,
+        url: "https://xyy.qd.sdu.edu.cn/xinwenContent?id=" + article.id,
       }
       await navigator.share(shareData)
       console.log('分享成功')
@@ -29,16 +29,16 @@ const share = async (article) => {
 </script>
 
 <template>
-  <div class="tongzhi-page-wrapper main-background">
-    <page-title title="校医院通知" icon-name="icon-gonggao"></page-title>
+  <div class="xinwen-page-wrapper main-background">
+    <page-title title="校医院新闻" icon-name="icon-xinwen"></page-title>
     <div class="main">
       <el-scrollbar max-height="100%">
-        <div v-for="(article, index) in tongzhiStore.tongzhiArticleList" :key="index" class="layout-single-image">
+        <div v-for="(article, index) in xinwenStore.xinwenArticleList" :key="index" class="layout-single-image">
           <div class="layout-single-image-l">
             <div style="color:#333333;" @click="openLink(article.url)">
               {{ article.title }}
             </div>
-            <button v-if="tongzhiStore.showShare.isShow" style="width: fit-content;" @click="share(article)">分享</button>
+            <button v-if="xinwenStore.showShare.isShow" style="width: fit-content;" @click="share(article)">分享</button>
           </div>
           <el-image :src="article.pic" fit="cover" class="image-content" @click="openLink(article.url)">
           </el-image>
@@ -49,7 +49,7 @@ const share = async (article) => {
 </template>
 
 <style scoped>
-.tongzhi-page-wrapper {
+.xinwen-page-wrapper {
   min-height: 100vh;
   display: flex;
   flex-direction: column;

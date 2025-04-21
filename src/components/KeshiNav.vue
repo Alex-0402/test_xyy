@@ -25,11 +25,11 @@ function changeNav(keshi) {
                 {{ keshi.name }}
             </li>
         </ul>
-        <ul>
+        <!-- <ul>
             <li class="keshi-nav-item" :class="{'is-button':true}" @click="showNamePutter">
                 添加科室
             </li>
-        </ul>
+        </ul> -->
     </el-scrollbar>
 </template>
 

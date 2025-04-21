@@ -190,5 +190,18 @@ export const useDoctorStore = defineStore('doctor', () => {
 
   ])
 
-  return { doctorList }
+  // 生成与现有医生信息匹配的模拟数据
+  const getMockDoctorData = () => {
+    return doctorList.map(doctor => ({
+      id: doctor.id,
+      name: doctor.name,
+      title: doctor.title,
+      pic: doctor.pic,
+      web: doctor.web,
+      goodat: doctor.goodat,
+      workat: doctor.workat,
+    }));
+  };
+
+  return { doctorList, getMockDoctorData }
 })

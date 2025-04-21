@@ -13,17 +13,21 @@ const jkfwList = reactive([
   { iconName: "icon-a-yibaoyibaoka", servName: "学生医保", url: "/yibao-xs" },
   { iconName: "icon-mianxingshizibiaozhitubiao", servName: "服务指南", url: "/zhinan" },
   { iconName: "icon-mianxingyaotubiao2", servName: "药品相关", url: "/medicine-about" },
-  // { iconName: "icon-mianxingyaotubiao2", servName: "药品预约", url: "/" },
-  // { iconName: "icon-mianxingdianhuatubiao", servName: "办公电话", url: "/" }
   { iconName: "icon-mianxingyishengtubiao3", servName: "校医院新闻", url: '/xinwen' },
   { iconName: "icon-baojian", servName: "健康科普", url: "/kepuList" },
+  // { iconName: "icon-mianxingyaotubiao2", servName: "药品预约", url: "/" },
+  // { iconName: "icon-mianxingdianhuatubiao", servName: "办公电话", url: "/" }
 ])
 
 const adminList = reactive([
   { iconName: "icon-mianxingyishengtubiao3", servName: "医生信息管理", url: "/doctor-info" },
-  { iconName: "icon-rili", servName: "排班管理", url: "/change-keshi" },
-  { iconName: "icon-baojian", servName: "通知管理", url: "/tongzhi-manage" },
-  { iconName: "icon-mianxingshizibiaozhitubiao", servName: "系统设置", url: "/add-keshi-info" },
+  { iconName: "icon-rili", servName: "医生排班管理", url: "/change-keshi" },
+  { iconName: "icon-rili", servName: "科室排班管理", url: "/keshi-schedule" },
+  { iconName: "icon-mianxingshizibiaozhitubiao", servName: "科室管理", url: "/add-keshi-info" },
+  { iconName: "icon-baojian", servName: "校医院通知管理", url: "/tongzhi-manage" },
+  { iconName: "icon-baojian", servName: "校医院新闻管理", url: "/xinwen-manage" },
+  { iconName: "icon-mianxingshizibiaozhitubiao", servName: "服务指南管理", url: "/zhinan-manage" },
+  { iconName: "icon-baojian", servName: "科普文章管理", url: "/kepu-manage" },
 ])
 </script>
 
@@ -66,7 +70,18 @@ const adminList = reactive([
     </el-row>
     <div class="header-container">
     </div>
-    <page-title title="健康服务" icon-name="icon-mianxingyiyuantubiao"></page-title>
+    <page-title title="管理功能" icon-name="icon-mianxingyiyuantubiao"></page-title>
+    <el-row class="sect_content">
+      <el-col v-for="(item, index) in adminList" :key="index" :span="6">
+        <router-link :to="item.url">
+          <div class="grid-content">
+            <span class="iconfont" :class="item.iconName"></span>
+            <p>{{ item.servName }}</p>
+          </div>
+        </router-link>
+      </el-col>
+    </el-row>
+    <!-- <page-title title="管理功能" icon-name="icon-setting"></page-title>
     <el-row class="sect_content">
       <el-col v-for="(item, index) in adminList" :key="index" :span="8">
         <router-link :to="item.url">
@@ -76,7 +91,7 @@ const adminList = reactive([
           </div>
         </router-link>
       </el-col>
-    </el-row>
+    </el-row> -->
   </div>
 </template>
 

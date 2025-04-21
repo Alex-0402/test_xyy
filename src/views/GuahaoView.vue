@@ -15,9 +15,14 @@ const route = useRoute();
 
 const weekdaysShort = '周日_周一_周二_周三_周四_周五_周六'.split('_')
 const datesFromToday = [];
-for (let i = 0; i < 7; i++) {
+for (let i = 0; i < 14; i++) {
     datesFromToday.push(moment().add(i, 'days'));
 }
+
+// 将日期分成两周
+const firstWeekDates = datesFromToday.slice(0, 7);
+const secondWeekDates = datesFromToday.slice(7, 14);
+
 const showDate = ref(datesFromToday[0])
 
 if (route.query.keshi !== undefined) {
@@ -58,11 +63,19 @@ function changeShowDate(date) {
     <div class="guahao-page-wrapper main-background">
         <page-title title="门诊排班" icon-name="icon-rili"></page-title>
         <div class="top">
+            <!-- 两周日期分成上下两排显示 -->
             <ul class="date-nav">
-                <li v-for="(date, index) in datesFromToday" :key="index" class="date-item"
+                <li v-for="(date, index) in firstWeekDates" :key="'week1-' + index" class="date-item"
                     :class="{ 'is-active': showDate.date() == date.date() }" @click="changeShowDate(date)">
-                    <p> {{ date.format('MM.DD') }}</p>
-                    <p> {{ weekdaysShort[date.day()] }} </p>
+                    <p>{{ date.format('MM.DD') }}</p>
+                    <p>{{ weekdaysShort[date.day()] }}</p>
+                </li>
+            </ul>
+            <ul class="date-nav">
+                <li v-for="(date, index) in secondWeekDates" :key="'week2-' + index" class="date-item"
+                    :class="{ 'is-active': showDate.date() == date.date() }" @click="changeShowDate(date)">
+                    <p>{{ date.format('MM.DD') }}</p>
+                    <p>{{ weekdaysShort[date.day()] }}</p>
                 </li>
             </ul>
         </div>
@@ -99,17 +112,10 @@ function changeShowDate(date) {
 }
 
 .top {
-    padding: px;
-    /* border: ; */
-}
-
-.main {
-    height: calc(100% - 140px);
+    padding: 10px 0;
     display: flex;
-}
-
-ul {
-    padding-inline-start: 1px;
+    flex-direction: column; /* 上下排列两排日期 */
+    gap: 0px; /* 两排之间的间距 */
 }
 
 .date-nav {
@@ -118,7 +124,8 @@ ul {
     background-color: rgba(255, 255, 255, 0.3);
     height: 70px;
     list-style: none;
-    flex-wrap: wrap;
+    margin: 0;
+    padding: 0;
 }
 
 .date-item {
@@ -128,33 +135,35 @@ ul {
     align-items: center;
     justify-content: center;
     text-align: justify;
-    border: 1px, solid, rgba(146, 222, 236, 0.493);
-    color: #333; /* 设置字体颜色为深灰色 */
+    border: 1px solid rgba(146, 222, 236, 0.493);
+    color: #333;
 }
 
 .is-active p {
-    /* background-color: rgba(146, 222, 236, 0.493); */
     color: #9c0c15;
     font-weight: 600;
+}
+
+.main {
+    height: calc(100% - 140px);
+    display: flex;
 }
 
 .keshi-detail {
     flex: 1;
     background-color: rgba(255, 255, 255, 0.7);
     padding: 10px 20px;
-    color: #333; /* 设置字体颜色为深灰色 */
+    color: #333;
 }
 
 .bold10 {
     font-weight: 700;
     padding-left: 10px;
-    color: #333; /* 设置字体颜色为深灰色 */
 }
 
 .sec-title {
     padding-bottom: 10px;
     font-weight: 700;
     font-size: 20px;
-    color: #333; /* 设置字体颜色为深灰色 */
 }
 </style>

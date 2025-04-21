@@ -33,20 +33,11 @@ const router = createRouter({
       component: () => import('../views/GuahaoView.vue')
     },
     {
-      path:'/tongzhi',
-      name:'校医院通知',
-      component: () => import('../views/TongzhiView.vue')
-    },
-    {
       path:'/yibao-xs',
       name:'学生医保',
       component: () => import('../views/XueshengYibao.vue')
     },
-    {
-      path:'/zhinan',
-      name:'服务指南',
-      component: () => import('../views/Zhinan.vue')
-    },
+
     {
       path:'/medicine-about',
       name:'药品相关',
@@ -58,20 +49,34 @@ const router = createRouter({
       component: () => import('../views/MedicineView.vue')
     },
     {
-      path:'/kepuList',
-      name:'健康科普',
-      component: () => import('../views/KepuListView.vue')
-    },
-    {
-      path:'/kepuContent',
-      name:'文章',
-      component: () => import('../views/KepuContentView.vue')
-    },
-    {
       path:'/photo',
       name:'水印相机',
       component: () => import('../views/Photo.vue')
     },
+
+    // 文章部分
+    {
+      path:'/tongzhi',
+      name:'校医院通知',
+      component: () => import('../views/TongzhiView.vue')
+    },
+    {
+      path:'/zhinan',
+      name:'服务指南',
+      component: () => import('../views/Zhinan.vue')
+    },
+    {
+      path:'/xinwen',
+      name:'校医院新闻',
+      component: () => import('../views/XinwenView.vue')
+    },
+    {
+      path:'/kepuList',
+      name:'健康科普',
+      component: () => import('../views/KepuListView.vue')
+    },
+
+    // 登陆
     {
       path:'/login',
       name:'登录',
@@ -87,6 +92,8 @@ const router = createRouter({
       name:'安全问题设置',
       component: () => import('../views/SecurityQuestionsView.vue')
     },
+
+    // 管理员页面
     {
       path: '/doctor-info',
       name: '修改医生个人资料卡',
@@ -95,12 +102,37 @@ const router = createRouter({
     {
       path: '/change-keshi',
       name: '修改值班信息',
-      component: () => import('../views/ChangeKeShiView.vue')
+      component: () => import('../views/ChangePaibanView.vue')
     },
     {
       path: '/add-keshi-info',
       name: '修改科室信息',
       component: () => import('../views/DepartmentInfoCollect.vue')
+    },
+    {
+      path: '/keshi-schedule',
+      name: '科室排班管理',
+      component: () => import('../views/KeshiScheduleView.vue')
+    },
+    {
+      path: '/tongzhi-manage',
+      name: '通知管理',
+      component: () => import('../views/admin/TongzhiManageView.vue')
+    },
+    {
+      path: '/xinwen-manage',
+      name: '新闻管理',
+      component: () => import('../views/admin/XinwenManageView.vue')
+    },
+    {
+      path: '/zhinan-manage',
+      name: '服务指南管理',
+      component: () => import('../views/admin/ZhinanManageView.vue')
+    },
+    {
+      path: '/kepu-manage',
+      name: '科普文章管理',
+      component: () => import('../views/admin/KepuManageView.vue')
     },
   ]
 })
@@ -108,7 +140,18 @@ const router = createRouter({
 // 添加路由守卫，保护需要管理员权限的页面
 router.beforeEach((to, from, next) => {
   // 如果是管理员才能访问的页面，在这里添加路径
-  const adminRoutes = ['/change-password', '/security-questions'];
+  const adminRoutes = [
+    '/change-password', 
+    '/security-questions', 
+    '/doctor-info', 
+    '/change-keshi', 
+    '/add-keshi-info', 
+    '/keshi-schedule',
+    '/tongzhi-manage',
+    '/xinwen-manage',
+    '/zhinan-manage',
+    '/kepu-manage'
+  ];
   
   // 检查是否为管理员页面
   if (adminRoutes.includes(to.path)) {
