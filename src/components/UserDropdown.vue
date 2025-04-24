@@ -19,8 +19,8 @@ const checkLoginStatus = () => {
 // 登出操作
 const handleLogout = async () => {
   const response = await logoutUser();
-  
-  if (response.status === 999) {
+  console.log('登出响应', response);
+  if (response.code === 999) {
     ElMessage.success('已成功登出');
   } else {
     ElMessage.warning('登出过程中发生错误，但您已被登出系统');

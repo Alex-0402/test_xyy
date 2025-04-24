@@ -27,10 +27,18 @@ const handleLogin = async () => {
     // 调用封装后的登录API
     const response = await loginUser(loginForm.username, loginForm.password);
     
-    if (response.status === 999) {
+    console.log('登录响应', response);
+    // 检查登录是否成功
+    console.log('登录状态', response.code);
+
+    if (response.code === 999) {
       // 保存用户名，用于后续使用
       localStorage.setItem('current_username', loginForm.username);
       ElMessage.success('登录成功');
+
+      console.log('登录成功', response);
+      // 跳转到主页
+
       router.push('/');
     } else {
       ElMessage.error(response.message || '用户名或密码错误');

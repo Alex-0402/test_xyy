@@ -43,7 +43,7 @@ const changePassword = async () => {
     // 使用auth.js中封装好的changePassword函数
     const response = await authChangePassword(oldPassword.value, newPassword.value);
     
-    if (response && response.status === 999) {
+    if (response && response.code === 999) {
       ElMessage.success('密码修改成功');
       // 修改成功后清除令牌并返回登录页
       localStorage.removeItem('access_token');

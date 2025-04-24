@@ -26,7 +26,7 @@ const fetchSecurityQuestions = async () => {
   try {
     const response = await getUserSecurityQuestions(username.value);
     
-    if (response.status === 999) {
+    if (response.code === 999) {
       securityQuestions.value = response.data || [];
       if (securityQuestions.value.length > 0) {
         selectedQuestion.value = securityQuestions.value[0].id;
@@ -66,7 +66,7 @@ const handleResetPassword = async () => {
       newPassword.value
     );
     
-    if (response.status === 999) {
+    if (response.code === 999) {
       ElMessage.success('密码重置成功，请使用新密码登录');
       router.push('/login');
     } else {
