@@ -332,3 +332,9 @@ export const setupAxiosInterceptors = () => {
     }
   );
 };
+
+// API 基础URL
+export const API_BASE_URL = 'http://38.38.251.86:8000/api';
+export const MEDIA_BASE_URL = 'http://38.38.251.86:8001';
+
+// 删除所有科室相关API函数

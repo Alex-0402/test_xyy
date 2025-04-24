@@ -1,17 +1,23 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import PageTitle from '../../components/PageTitle.vue';
 import UserDropdown from '../../components/UserDropdown.vue';
-import axios from 'axios';
+import { getAccessToken } from '../../utils/auth';
+import { 
+  fetchDepartments, 
+  createDepartment, 
+  updateDepartment, 
+  deleteDepartment 
+} from '../../utils/departmentApi';
 
 // 单个科室信息的数据结构
 const departmentForm = reactive({
   name: '',
-  introduction: '', // 将description1更改为introduction以匹配API
+  introduction: '',
   workStartTime: '',
   workEndTime: '',
-  doctor_ids: [], // 添加医生ID列表
+  doctor_ids: [],
 });
 
 // 用于存储所有科室信息的列表
@@ -22,22 +28,36 @@ const isEditing = ref(false);
 const editingId = ref(null);
 
 // 获取已有科室信息
-const fetchDepartments = async () => {
+const getDepartments = async () => {
   loading.value = true;
   try {
-    // 根据API文档调整URL
-    const response = await axios.get('/api/departments/');
+    console.log('开始获取科室数据');
+    const response = await fetchDepartments();
+    console.log('获取科室响应:', response);
     
-    // 处理返回的数据格式
-    if (response.data && response.data.code === 200) {
-      departmentsList.value = response.data.data || [];
-      ElMessage.success(response.data.message || '获取科室信息成功');
+    // 根据后端API文档处理响应数据
+    if (response && response.code === 200) {
+      departmentsList.value = response.data || [];
+      console.log('科室数据处理成功:', departmentsList.value);
     } else {
-      ElMessage.warning(response.data.message || '获取科室信息返回格式异常');
+      ElMessage.warning(response?.message || '获取科室信息返回格式异常');
+      console.warn('科室数据格式异常:', response);
     }
   } catch (error) {
     console.error('获取科室信息失败:', error);
-    ElMessage.error(error.response?.data?.message || '获取科室信息失败');
+    // 增加更详细的错误日志
+    if (error.response) {
+      console.log('错误响应状态:', error.response.status);
+      console.log('错误响应数据:', error.response.data);
+      
+      if (error.response.status === 401) {
+        ElMessage.error('请先登录或您没有权限执行此操作');
+      } else {
+        ElMessage.error(error.response?.data?.message || '获取科室信息失败，请检查网络连接');
+      }
+    } else {
+      ElMessage.error('获取科室信息失败，请检查网络连接');
+    }
   } finally {
     loading.value = false;
   }
@@ -50,11 +70,11 @@ const submitDepartmentInfo = async () => {
     return;
   }
 
-  // 准备要提交的数据
+  // 准备要提交的数据（根据API文档格式）
   const submitData = {
     name: departmentForm.name,
-    introduction: departmentForm.introduction,
-    doctor_ids: departmentForm.doctor_ids
+    introduction: departmentForm.introduction || '',
+    doctor_ids: departmentForm.doctor_ids || []
   };
   
   // 如果有工作时间，添加到科室介绍中
@@ -62,39 +82,56 @@ const submitDepartmentInfo = async () => {
     submitData.introduction += `\n工作时间：${departmentForm.workStartTime} - ${departmentForm.workEndTime}`;
   }
 
+  console.log('准备提交科室数据:', submitData);
   loading.value = true;
+  
   try {
     let response;
     
-    if (isEditing.value) {
+    if (isEditing.value && editingId.value) {
+      console.log(`编辑科室，ID: ${editingId.value}，类型: ${typeof editingId.value}`);
       // 编辑现有科室
-      response = await axios.put(`/api/departments/${editingId.value}/`, submitData);
-      
-      if (response.data && response.data.code === 200) {
-        ElMessage.success(response.data.message || '科室信息更新成功');
-      } else {
-        ElMessage.warning(response.data.message || '科室信息更新返回格式异常');
-      }
+      response = await updateDepartment(editingId.value, submitData);
     } else {
+      console.log('新建科室');
       // 添加新科室
-      response = await axios.post('/api/departments/', submitData);
-      
-      if (response.data && response.data.code === 201) {
-        ElMessage.success(response.data.message || '科室信息提交成功');
-      } else {
-        ElMessage.warning(response.data.message || '科室信息提交返回格式异常');
-      }
+      response = await createDepartment(submitData);
     }
     
-    // 重新获取科室列表
-    fetchDepartments();
-    // 清空表单
-    resetForm();
-    isEditing.value = false;
-    editingId.value = null;
+    console.log('提交科室响应:', response);
+    
+    // 处理响应（按照API文档格式）
+    if (response) {
+      if ((isEditing.value && response.code === 200) || 
+          (!isEditing.value && response.code === 201)) {
+        ElMessage.success(response.message || (isEditing.value ? '科室信息更新成功' : '科室信息提交成功'));
+        // 重新获取科室列表
+        getDepartments();
+        // 清空表单
+        resetForm();
+      } else {
+        ElMessage.warning(response.message || '操作返回格式异常');
+      }
+    } else {
+      ElMessage.error('操作失败: 无响应数据');
+    }
   } catch (error) {
     console.error('提交科室信息失败:', error);
-    ElMessage.error(error.response?.data?.message || '提交科室信息失败');
+    // 处理错误，特别注意 401 未授权错误
+    if (error.response) {
+      console.log('错误响应状态:', error.response.status);
+      console.log('错误响应数据:', error.response.data);
+      
+      if (error.response.status === 401) {
+        ElMessage.error('请先登录或者您没有权限执行此操作');
+      } else if (error.response.status === 400) {
+        ElMessage.error(error.response.data?.message || '提交的数据格式不正确');
+      } else {
+        ElMessage.error(error.response.data?.message || `提交科室信息失败: ${error.response.status}`);
+      }
+    } else {
+      ElMessage.error('提交科室信息失败，请检查网络连接');
+    }
   } finally {
     loading.value = false;
   }
@@ -118,6 +155,9 @@ const editDepartment = (department) => {
   let workStartTime = '';
   let workEndTime = '';
   
+  // 记录原始ID，方便调试
+  console.log('要编辑的科室ID:', department.id, '类型:', typeof department.id);
+  
   // 尝试从介绍中提取工作时间
   const timeRegex = /工作时间：(\d{2}:\d{2}) - (\d{2}:\d{2})/;
   const timeMatch = introduction.match(timeRegex);
@@ -125,18 +165,26 @@ const editDepartment = (department) => {
   if (timeMatch) {
     workStartTime = timeMatch[1];
     workEndTime = timeMatch[2];
-    // 从介绍中移除工作时间信息
+    // 从介绍中移除工作时间信息，以免重复添加
     introduction = introduction.replace(timeRegex, '').trim();
   }
   
-  departmentForm.name = department.name;
+  departmentForm.name = department.name || '';
   departmentForm.introduction = introduction;
   departmentForm.workStartTime = workStartTime;
   departmentForm.workEndTime = workEndTime;
   departmentForm.doctor_ids = department.doctors?.map(doc => doc.id) || [];
   
+  // 调试信息
+  console.log('要编辑的科室对象:', department);
+  console.log('科室ID类型:', typeof department.id);
+  console.log('科室ID值:', department.id);
+  
   isEditing.value = true;
   editingId.value = department.id;
+  
+  // 调试信息
+  console.log('设置editingId为:', editingId.value, '类型:', typeof editingId.value);
   
   // 滚动到表单顶部
   window.scrollTo({
@@ -146,27 +194,58 @@ const editDepartment = (department) => {
 };
 
 // 删除科室信息
-const deleteDepartment = async (id) => {
-  try {
-    // 根据API文档调整URL
-    const response = await axios.delete(`/api/departments/${id}/`);
-    
-    if (response.data && (response.data.code === 204 || response.data.message === '删除成功')) {
-      ElMessage.success(response.data.message || '删除成功');
-    } else {
-      ElMessage.warning(response.data.message || '删除返回格式异常');
+const handleDeleteDepartment = async (id) => {
+  // 记录原始ID，方便调试
+  console.log('要删除的科室ID:', id, '类型:', typeof id);
+  
+  console.log('要删除的科室ID类型:', typeof id);
+  console.log('要删除的科室ID值:', id);
+  
+  ElMessageBox.confirm('确定要删除该科室吗？删除后将无法恢复。', '警告', {
+    confirmButtonText: '确定',
+    cancelButtonText: '取消',
+    type: 'warning'
+  }).then(async () => {
+    try {
+      // 记录当前token状态
+      const token = getAccessToken(); // 现在这个函数已正确导入
+      console.log('当前是否有token:', !!token);
+      
+      console.log(`准备删除科室 ID: ${id}`);
+      const response = await deleteDepartment(id);
+      console.log('删除科室响应数据:', response);
+      
+      // 按照API文档检查响应格式
+      if (response && (response.code === 204 || response.message === '删除成功')) {
+        ElMessage.success('删除成功');
+        getDepartments(); // 刷新列表
+      } else {
+        ElMessage.warning(response?.message || '删除返回格式异常');
+      }
+    } catch (error) {
+      console.error('删除科室信息详细错误:', error);
+      
+      if (error.message && error.message.includes('Network Error')) {
+        ElMessage.error('网络错误，无法连接到服务器');
+      } else if (error.response) {
+        console.log('错误响应状态:', error.response.status);
+        console.log('错误响应数据:', error.response.data);
+        
+        if (error.response.status === 401) {
+          ElMessage.error('请先登录或者您没有权限执行此操作');
+        } else if (error.response.status === 404) {
+          ElMessage.error('科室不存在或已被删除');
+          getDepartments(); // 刷新列表
+        } else {
+          ElMessage.error(error.response.data?.message || `删除失败: ${error.response.status}`);
+        }
+      } else {
+        ElMessage.error(`删除失败: ${error.message || '未知错误'}`);
+      }
     }
-    
-    fetchDepartments();
-  } catch (error) {
-    console.error('删除科室信息失败:', error);
-    ElMessage.error(error.response?.data?.message || '删除失败');
-  }
-};
-
-// 格式化时间显示
-const formatTime = (time) => {
-  return time ? time : '未设置';
+  }).catch(() => {
+    ElMessage.info('已取消删除');
+  });
 };
 
 // 从科室介绍中提取工作时间
@@ -185,7 +264,7 @@ const extractWorkTime = (department) => {
 
 // 页面加载时获取科室列表
 onMounted(() => {
-  fetchDepartments();
+  getDepartments();
 });
 </script>
 
@@ -238,26 +317,6 @@ onMounted(() => {
             ></el-input>
           </el-form-item>
 
-          <!-- 可以在这里添加选择医生的选项，如果需要 -->
-          <!-- 
-          <el-form-item label="科室医生">
-            <el-select
-              v-model="departmentForm.doctor_ids"
-              multiple
-              placeholder="请选择科室医生"
-              style="width: 100%"
-            >
-              <el-option
-                v-for="doctor in doctorsList"
-                :key="doctor.id"
-                :label="doctor.name"
-                :value="doctor.id"
-              >
-              </el-option>
-            </el-select>
-          </el-form-item>
-          -->
-
           <div class="form-btns">
             <el-button type="primary" @click="submitDepartmentInfo" :loading="loading">
               {{ isEditing ? '保存修改' : '提交' }}
@@ -274,7 +333,7 @@ onMounted(() => {
         <template #header>
           <div class="card-header">
             <h3>科室信息列表</h3>
-            <el-button type="primary" @click="fetchDepartments" :loading="loading">
+            <el-button type="primary" @click="getDepartments" :loading="loading">
               刷新
             </el-button>
           </div>
@@ -297,7 +356,7 @@ onMounted(() => {
               {{ scope.row.doctors ? scope.row.doctors.length : 0 }}
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="150">
+          <el-table-column label="操作" width="220">
             <template #default="scope">
               <el-button type="primary" size="small" @click="editDepartment(scope.row)">
                 编辑
@@ -305,10 +364,13 @@ onMounted(() => {
               <el-button
                 type="danger"
                 size="small"
-                @click="deleteDepartment(scope.row.id)"
+                @click="handleDeleteDepartment(scope.row.id)"
               >
                 删除
               </el-button>
+              <!-- <el-button type="info" size="small" @click="console.log('科室详情:', scope.row)">
+                调试
+              </el-button> -->
             </template>
           </el-table-column>
         </el-table>

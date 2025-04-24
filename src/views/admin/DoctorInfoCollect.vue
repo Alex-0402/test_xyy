@@ -1,23 +1,32 @@
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
-import { ElMessage } from 'element-plus';
+import { ref, reactive, onMounted, computed } from 'vue';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import PageTitle from '../../components/PageTitle.vue';
 import UserDropdown from '../../components/UserDropdown.vue';
-import axios from 'axios';
-import { useDoctorStore } from '../../stores/doctor';
 import { useKeshiStore } from '../../stores/keshi';
+import { 
+  fetchDoctors, 
+  createDoctor, 
+  updateDoctor, 
+  deleteDoctor, 
+  uploadDoctorAvatar,
+  formatDoctorData,
+  getDoctorDetail
+} from '../../utils/doctorApi';
 
-const doctorStore = useDoctorStore();
+// 引入科室API，添加updateDepartment函数
+import { fetchDepartments, updateDepartment } from '../../utils/departmentApi';
+
 const keshiStore = useKeshiStore();
 
 // 扩展医生信息数据结构
 const doctorForm = reactive({
   name: '',
-  intro: '',
+  introduction: '',
   avatar: null,
   title: '',
-  keshi: '',
-  workat: []
+  department: '',
+  avatar_url: ''
 });
 
 // 用于存储所有医生信息的列表
@@ -28,30 +37,123 @@ const imageUrl = ref('');
 const editMode = ref(false);
 const currentEditId = ref('');
 
+// 当前选择的科室
+const activeKeshi = ref(null);
+
+// 科室列表
+const departmentList = ref([]);
+
+// 分页信息
+const pagination = reactive({
+  currentPage: 1,
+  pageSize: 10,
+  totalPages: 1
+});
+
+// 获取科室列表
+const fetchDepartmentList = async () => {
+  try {
+    const response = await fetchDepartments();
+    if (response && response.code === 200) {
+      departmentList.value = response.data || [];
+      console.log('获取科室列表成功:', departmentList.value);
+    }
+  } catch (error) {
+    console.error('获取科室列表失败:', error);
+    ElMessage.error('获取科室列表失败');
+  }
+};
+
 // 科室选项
-const keshiOptions = computed(() => {
-  return keshiStore.keshiList.map(keshi => ({
-    label: keshi.name,
-    value: keshi.id
+const departmentOptions = computed(() => {
+  return departmentList.value.map(dept => ({
+    label: dept.name,
+    value: dept.id
   }));
 });
 
-// 获取已有医生信息
-const fetchDoctors = async () => {
+// 可用科室列表
+const availableKeshiList = computed(() => {
+  return departmentList.value || [];
+});
+
+// 从指定科室获取医生详情
+const fetchDoctorsFromDepartment = async (department) => {
+  if (!department || !department.doctors || department.doctors.length === 0) {
+    return [];
+  }
+  
+  const detailedDoctorsList = [];
+  
+  // 对每个医生ID获取其详细信息
+  for (const doctorSummary of department.doctors) {
+    try {
+      const doctorDetailResponse = await getDoctorDetail(doctorSummary.id);
+      
+      if (doctorDetailResponse && doctorDetailResponse.code === 200) {
+        const doctorDetail = doctorDetailResponse.data;
+        
+        detailedDoctorsList.push({
+          id: doctorDetail.id,
+          name: doctorDetail.name,
+          title: doctorDetail.title || '',
+          department: department.id,
+          departmentName: department.name,
+          avatarUrl: doctorDetail.avatar_url || '',
+          intro: doctorDetail.introduction || '暂无简介'
+        });
+      }
+    } catch (doctorError) {
+      console.error(`获取医生${doctorSummary.id}详情失败:`, doctorError);
+    }
+  }
+  
+  return detailedDoctorsList;
+};
+
+// 获取已有医生信息 - 使用科室接口
+const fetchDoctorList = async () => {
   loading.value = true;
   try {
-    // 在实际应用中，这里应该调用API获取数据
-    // 现在我们直接使用模拟数据
-    const mockData = doctorStore.getMockDoctorData();
-    doctorsList.value = mockData.map(doctor => ({
-      id: doctor.id,
-      name: doctor.name,
-      title: doctor.title || '',
-      keshi: doctor.keshi,
-      keshiName: getKeshiName(doctor.keshi),
-      avatarUrl: doctor.pic || '',
-      intro: doctor.goodat || '暂无简介'
-    }));
+    // 获取所有科室
+    const departmentsResponse = await fetchDepartments();
+    
+    if (departmentsResponse && departmentsResponse.code === 200) {
+      // 创建科室映射表供后续使用
+      const departmentsMap = {};
+      departmentsResponse.data.forEach(dept => {
+        departmentsMap[dept.id] = dept;
+      });
+      
+      // 如果有选中的科室，只显示该科室的医生
+      if (activeKeshi.value) {
+        // 获取选中科室的详细信息
+        const selectedDepartment = departmentsMap[activeKeshi.value.id];
+        doctorsList.value = await fetchDoctorsFromDepartment(selectedDepartment);
+      } else {
+        // 如果没有选中科室，获取所有科室的医生
+        const allDoctors = [];
+        
+        // 从每个科室获取医生列表
+        for (const department of departmentsResponse.data) {
+          const departmentDoctors = await fetchDoctorsFromDepartment(department);
+          allDoctors.push(...departmentDoctors);
+        }
+        
+        // 应用分页逻辑
+        const totalItems = allDoctors.length;
+        const totalPages = Math.ceil(totalItems / pagination.pageSize);
+        
+        pagination.totalPages = totalPages || 1;
+        
+        // 根据当前页号计算显示的子集
+        const startIndex = (pagination.currentPage - 1) * pagination.pageSize;
+        const endIndex = Math.min(startIndex + pagination.pageSize, totalItems);
+        doctorsList.value = allDoctors.slice(startIndex, endIndex);
+      }
+    } else {
+      ElMessage.warning(departmentsResponse?.message || '获取科室列表返回格式异常');
+    }
   } catch (error) {
     console.error('获取医生信息失败:', error);
     ElMessage.error('获取医生信息失败');
@@ -60,63 +162,87 @@ const fetchDoctors = async () => {
   }
 };
 
-// 获取科室名称
-const getKeshiName = (keshiId) => {
-  const keshi = keshiStore.keshiList.find(k => k.id === keshiId);
-  return keshi ? keshi.name : '未知科室';
+// 切换选中的科室
+const changeKeshi = (keshi) => {
+  activeKeshi.value = keshi;
+  // 如果处于编辑模式，重置表单
+  if (editMode.value) {
+    resetForm();
+  }
+  // 更新医生列表 - 基于科室
+  fetchDoctorList();
+  // 预设表单科室
+  doctorForm.department = keshi.id;
 };
 
 // 提交医生信息
 const submitDoctorInfo = async () => {
-  if (!doctorForm.name || !doctorForm.keshi) {
-    ElMessage.warning('请填写医生姓名和选择科室');
+  if (!doctorForm.name) {
+    ElMessage.warning('请填写医生姓名');
     return;
   }
 
+  // 移除科室选择验证，因为API不需要科室字段
   loading.value = true;
   try {
-    let newDoctor;
+    // 准备提交的数据，只包含API文档中指定的字段
+    const submitData = {
+      name: doctorForm.name,
+      title: doctorForm.title || '',
+      introduction: doctorForm.introduction || ''
+    };
+    
+    console.log('准备提交的医生数据:', submitData);
+    
+    let response;
     
     if (editMode.value) {
       // 更新现有医生
-      const doctorIndex = doctorStore.doctorList.findIndex(d => d.id === currentEditId.value);
-      if (doctorIndex !== -1) {
-        const doctor = doctorStore.doctorList[doctorIndex];
-        doctor.name = doctorForm.name;
-        doctor.title = doctorForm.title;
-        doctor.keshi = doctorForm.keshi;
-        doctor.goodat = doctorForm.intro;
-        if (imageUrl.value && !imageUrl.value.startsWith('http')) {
-          doctor.pic = imageUrl.value;
+      response = await updateDoctor(currentEditId.value, submitData);
+      
+      if (response && response.code === 200) {
+        // 如果有新上传的头像，处理头像上传
+        if (doctorForm.avatar) {
+          await handleAvatarUpload(currentEditId.value);
         }
+        
         ElMessage.success('医生信息更新成功');
+      } else {
+        ElMessage.warning(response?.message || '更新医生信息返回格式异常');
       }
     } else {
       // 添加新医生
-      const id = 'doc_' + Date.now();
-      newDoctor = {
-        id,
-        name: doctorForm.name,
-        title: doctorForm.title || '医师',
-        keshi: doctorForm.keshi,
-        pic: imageUrl.value || '',
-        goodat: doctorForm.intro || '',
-        web: '',
-        workat: []
-      };
+      response = await createDoctor(submitData);
       
-      // 添加到医生列表
-      doctorStore.doctorList.push(newDoctor);
-      ElMessage.success('医生信息添加成功');
+      if (response && response.code === 201) {
+        const newDoctorId = response.data.id;
+        
+        // 如果有上传头像，处理头像上传
+        if (doctorForm.avatar) {
+          await handleAvatarUpload(newDoctorId);
+        }
+        
+        // 将新创建的医生添加到当前选中的科室
+        if (activeKeshi.value && newDoctorId) {
+          await updateDepartmentWithDoctor(activeKeshi.value.id, newDoctorId);
+        }
+        
+        ElMessage.success('医生信息添加成功');
+      } else {
+        ElMessage.warning(response?.message || '添加医生信息返回格式异常');
+      }
     }
     
-    // 重新加载数据
-    fetchDoctors();
-    // 清空表单
+    // 刷新列表并重置表单
+    await fetchDoctorList();
     resetForm();
   } catch (error) {
     console.error('提交医生信息失败:', error);
-    ElMessage.error('提交医生信息失败');
+    if (error.response) {
+      ElMessage.error(error.response.data?.message || '提交医生信息失败');
+    } else {
+      ElMessage.error('提交医生信息失败');
+    }
   } finally {
     loading.value = false;
     editMode.value = false;
@@ -124,14 +250,81 @@ const submitDoctorInfo = async () => {
   }
 };
 
+// 更新科室医生列表
+const updateDepartmentWithDoctor = async (departmentId, doctorId) => {
+  try {
+    // 获取科室详情
+    const departmentsResponse = await fetchDepartments();
+    
+    if (departmentsResponse && departmentsResponse.code === 200) {
+      // 找到当前选中科室
+      const currentDepartment = departmentsResponse.data.find(dept => dept.id === departmentId);
+      
+      if (currentDepartment) {
+        // 提取已有的医生ID列表
+        const existingDoctors = currentDepartment.doctors || [];
+        const existingDoctorIds = existingDoctors.map(doc => doc.id);
+        
+        // 添加新医生ID
+        const updatedDoctorIds = [...existingDoctorIds, doctorId];
+        
+        // 更新科室信息 - 传递所有必需参数
+        const updateData = {
+          name: currentDepartment.name,
+          introduction: currentDepartment.introduction || '',
+          doctor_ids: updatedDoctorIds
+        };
+        
+        const updateResponse = await updateDepartment(departmentId, updateData);
+        
+        if (updateResponse && updateResponse.code === 200) {
+          console.log('成功将医生添加到科室');
+          return true;
+        } else {
+          console.error('将医生添加到科室失败:', updateResponse);
+          ElMessage.warning('医生创建成功，但未能添加到科室，请手动添加');
+        }
+      }
+    }
+  } catch (deptError) {
+    console.error('更新科室医生列表失败:', deptError);
+    ElMessage.warning('医生创建成功，但未能添加到科室，请手动添加');
+  }
+  
+  return false;
+};
+
+// 处理头像上传
+const handleAvatarUpload = async (doctorId) => {
+  try {
+    if (!doctorForm.avatar) {
+      console.log('没有头像文件需要上传');
+      return;
+    }
+    
+    const response = await uploadDoctorAvatar(doctorId, doctorForm.avatar);
+    
+    if (response && response.code === 201) {
+      console.log('头像上传成功');
+      return response;
+    } else {
+      ElMessage.warning('头像上传失败');
+    }
+  } catch (error) {
+    console.error('头像上传错误:', error);
+    ElMessage.error('头像上传失败');
+  }
+};
+
 // 重置表单
 const resetForm = () => {
   doctorForm.name = '';
-  doctorForm.intro = '';
+  doctorForm.introduction = '';
   doctorForm.avatar = null;
   doctorForm.title = '';
-  doctorForm.keshi = '';
-  doctorForm.workat = [];
+  // 如果有选中科室，则默认使用当前科室
+  doctorForm.department = activeKeshi.value ? activeKeshi.value.id : '';
+  doctorForm.avatar_url = '';
   imageUrl.value = '';
   editMode.value = false;
   currentEditId.value = '';
@@ -164,61 +357,130 @@ const handleAvatarSuccess = (response, file) => {
   imageUrl.value = URL.createObjectURL(file.raw);
 };
 
+// 从科室中移除医生
+const removeFromDepartments = async (doctorId, departments) => {
+  // 找到包含该医生的科室
+  const affectedDepartments = [];
+  departments.forEach(dept => {
+    const doctors = dept.doctors || [];
+    // 检查科室是否包含要删除的医生
+    if (doctors.some(doc => doc.id === doctorId || doc.id === parseInt(doctorId))) {
+      affectedDepartments.push({
+        id: dept.id,
+        name: dept.name,
+        introduction: dept.introduction,
+        doctors: doctors.filter(doc => doc.id !== doctorId && doc.id !== parseInt(doctorId))
+      });
+    }
+  });
+  
+  // 更新科室信息，从科室中删除该医生
+  for (const dept of affectedDepartments) {
+    try {
+      const doctorIds = dept.doctors.map(doc => doc.id);
+      
+      const updateResponse = await updateDepartment(dept.id, {
+        name: dept.name,
+        introduction: dept.introduction || '',
+        doctor_ids: doctorIds
+      });
+      
+      console.log(`更新科室 ${dept.name} 成功`);
+    } catch (deptError) {
+      console.error(`更新科室 ${dept.name} 失败:`, deptError);
+      ElMessage.warning(`医生删除成功，但无法从科室 ${dept.name} 中移除，请手动更新`);
+    }
+  }
+  
+  return affectedDepartments.length > 0;
+};
+
 // 删除医生信息
-const deleteDoctor = (id) => {
+const handleDeleteDoctor = (id) => {
   ElMessageBox.confirm('确定要删除该医生信息吗？', '警告', {
     confirmButtonText: '确定',
     cancelButtonText: '取消',
     type: 'warning'
-  }).then(() => {
-    const index = doctorStore.doctorList.findIndex(d => d.id === id);
-    if (index !== -1) {
-      doctorStore.doctorList.splice(index, 1);
-      ElMessage.success('删除成功');
-      fetchDoctors();
+  }).then(async () => {
+    try {
+      // 在删除医生之前，先获取所有科室信息
+      const departmentsResponse = await fetchDepartments();
+      
+      // 删除医生
+      const response = await deleteDoctor(id);
+      console.log('删除医生响应:', response);
+      
+      if (response && (response.code === 204 || response.message === '删除成功')) {
+        // 如果获取到科室信息，则从科室中移除医生
+        if (departmentsResponse && departmentsResponse.code === 200) {
+          await removeFromDepartments(id, departmentsResponse.data);
+        }
+        
+        ElMessage.success('删除成功');
+        fetchDoctorList(); // 刷新列表
+      } else {
+        ElMessage.warning(response?.message || '删除返回格式异常');
+      }
+    } catch (error) {
+      console.error('删除医生失败:', error);
+      ElMessage.error('删除医生失败');
     }
-  }).catch(() => {});
+  }).catch(() => {
+    ElMessage.info('已取消删除');
+  });
 };
 
 // 编辑医生信息
-const editDoctor = (id) => {
-  const doctor = doctorStore.doctorList.find(d => d.id === id);
-  if (doctor) {
-    editMode.value = true;
-    currentEditId.value = id;
-    doctorForm.name = doctor.name;
-    doctorForm.title = doctor.title;
-    doctorForm.keshi = doctor.keshi;
-    doctorForm.intro = doctor.goodat;
-    imageUrl.value = doctor.pic;
+const editDoctor = async (id) => {
+  try {
+    loading.value = true;
+    const response = await getDoctorDetail(id);
     
-    // 滚动到表单区域
-    document.querySelector('.form-container').scrollIntoView({ behavior: 'smooth' });
+    if (response && response.code === 200) {
+      const doctor = response.data;
+      
+      editMode.value = true;
+      currentEditId.value = id;
+      doctorForm.name = doctor.name || '';
+      doctorForm.title = doctor.title || '';
+      doctorForm.department = doctor.department;
+      doctorForm.introduction = doctor.introduction || '';
+      
+      if (doctor.avatar_url) {
+        imageUrl.value = doctor.avatar_url.startsWith('http')
+          ? doctor.avatar_url
+          : `${import.meta.env.VITE_MEDIA_BASE_URL || ''}${doctor.avatar_url}`;
+        doctorForm.avatar_url = doctor.avatar_url;
+      } else {
+        imageUrl.value = '';
+      }
+      
+      // 滚动到表单区域
+      document.querySelector('.form-container')?.scrollIntoView({ behavior: 'smooth' });
+    } else {
+      ElMessage.warning(response?.message || '获取医生信息返回格式异常');
+    }
+  } catch (error) {
+    console.error('获取医生详情失败:', error);
+    ElMessage.error('获取医生详情失败');
+  } finally {
+    loading.value = false;
   }
 };
 
-// 调用生成模拟数据的方法
-const generateMockData = () => {
-  const mockData = doctorStore.getMockDoctorData();
-  console.log('模拟数据:', mockData);
-  
-  // 将模拟数据转换为适合表格显示的格式
-  doctorsList.value = mockData.map(doctor => ({
-    id: doctor.id,
-    name: doctor.name,
-    title: doctor.title || '',
-    keshi: doctor.keshi,
-    keshiName: getKeshiName(doctor.keshi),
-    avatarUrl: doctor.pic || '',
-    intro: doctor.goodat || '暂无简介'
-  }));
-  
-  ElMessage.success('已加载模拟数据');
+// 初始化: 如果有科室数据，默认选择第一个
+const initDepartment = () => {
+  if (departmentList.value && departmentList.value.length > 0) {
+    activeKeshi.value = departmentList.value[0];
+    doctorForm.department = activeKeshi.value.id;
+  }
 };
 
-// 页面加载时获取医生列表
-onMounted(() => {
-  fetchDoctors();
+// 页面加载时获取科室列表和医生列表
+onMounted(async () => {
+  await fetchDepartmentList();
+  initDepartment();
+  await fetchDoctorList();
 });
 </script>
 
@@ -230,130 +492,147 @@ onMounted(() => {
 
     <page-title :title="editMode ? '编辑医生信息' : '医生信息管理'" icon-name="icon-mianxingyishengtubiao3"></page-title>
 
-    <!-- 信息收集表单 -->
-    <div class="form-container">
-      <el-card>
-        <template #header>
-          <div class="card-header">
-            <h3>{{ editMode ? '编辑医生信息' : '添加医生信息' }}</h3>
-            <el-button v-if="editMode" @click="resetForm" type="info">取消编辑</el-button>
-          </div>
-        </template>
+    <!-- 主要内容区 - 分为左侧科室选择和右侧医生信息 -->
+    <div class="main-content">
+      <!-- 左侧科室列表 -->
+      <div class="keshi-section">
+        <h3 class="section-title">选择科室</h3>
+        <ul class="keshi-list">
+          <li v-for="department in availableKeshiList" :key="department.id" 
+              class="keshi-item"
+              :class="{ 'is-active': activeKeshi && activeKeshi.id === department.id }"
+              @click="changeKeshi(department)">
+            {{ department.name }}
+          </li>
+        </ul>
+      </div>
 
-        <el-form :model="doctorForm" label-position="top">
-          <el-row :gutter="20">
-            <el-col :span="12">
-              <el-form-item label="医生姓名" required>
-                <el-input v-model="doctorForm.name" placeholder="请输入医生姓名"></el-input>
+      <!-- 右侧主要内容区 -->
+      <div class="right-content">
+        <!-- 信息收集表单 -->
+        <div class="form-container">
+          <el-card>
+            <template #header>
+              <div class="card-header">
+                <h3>{{ editMode ? '编辑医生信息' : (activeKeshi ? `添加${activeKeshi.name}科室医生` : '添加医生信息') }}</h3>
+                <el-button v-if="editMode" @click="resetForm" type="info">取消编辑</el-button>
+              </div>
+            </template>
+
+            <el-form :model="doctorForm" label-position="top">
+              <el-row :gutter="20">
+                <el-col :span="12">
+                  <el-form-item label="医生姓名" required>
+                    <el-input v-model="doctorForm.name" placeholder="请输入医生姓名"></el-input>
+                  </el-form-item>
+                </el-col>
+                <el-col :span="12">
+                  <el-form-item label="医生职称">
+                    <el-input v-model="doctorForm.title" placeholder="请输入医生职称，如：医师、主治医师等"></el-input>
+                  </el-form-item>
+                </el-col>
+              </el-row>
+
+              <el-form-item label="医生头像">
+                <el-upload
+                  class="avatar-uploader"
+                  action="#"
+                  :show-file-list="false"
+                  :auto-upload="false"
+                  :on-success="handleAvatarSuccess"
+                  :before-upload="beforeAvatarUpload"
+                >
+                  <img v-if="imageUrl" :src="imageUrl" class="avatar" />
+                  <el-icon v-else class="avatar-uploader-icon">
+                    <el-icon-plus />
+                  </el-icon>
+                </el-upload>
+                <div class="upload-tip">
+                  点击上传医生头像，支持JPG或PNG格式，大小不超过2MB
+                </div>
               </el-form-item>
-            </el-col>
-            <el-col :span="12">
-              <el-form-item label="医生职称">
-                <el-input v-model="doctorForm.title" placeholder="请输入医生职称，如：医师、主治医师等"></el-input>
+
+              <el-form-item label="医生简介">
+                <el-input
+                  v-model="doctorForm.introduction"
+                  type="textarea"
+                  :rows="5"
+                  placeholder="请输入医生简介，包括专业特长、工作经历等"
+                ></el-input>
               </el-form-item>
-            </el-col>
-          </el-row>
-          
-          <el-form-item label="所属科室" required>
-            <el-select v-model="doctorForm.keshi" placeholder="请选择科室" style="width: 100%">
-              <el-option 
-                v-for="item in keshiOptions"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value">
-              </el-option>
-            </el-select>
-          </el-form-item>
 
-          <el-form-item label="医生头像">
-            <el-upload
-              class="avatar-uploader"
-              action="#"
-              :show-file-list="false"
-              :auto-upload="false"
-              :on-success="handleAvatarSuccess"
-              :before-upload="beforeAvatarUpload"
-            >
-              <img v-if="imageUrl" :src="imageUrl" class="avatar" />
-              <el-icon v-else class="avatar-uploader-icon">
-                <el-icon-plus />
-              </el-icon>
-            </el-upload>
-            <div class="upload-tip">
-              点击上传医生头像，支持JPG或PNG格式，大小不超过2MB
+              <div class="form-btns">
+                <el-button type="primary" @click="submitDoctorInfo" :loading="loading">
+                  {{ editMode ? '保存修改' : '提交' }}
+                </el-button>
+                <el-button @click="resetForm">重置</el-button>
+              </div>
+            </el-form>
+          </el-card>
+        </div>
+
+        <!-- 医生信息列表 -->
+        <div class="list-container">
+          <el-card>
+            <template #header>
+              <div class="card-header">
+                <h3>
+                  {{ activeKeshi ? activeKeshi.name + ' - 医生列表' : '全部医生列表' }}
+                </h3>
+                <el-button type="primary" @click="fetchDoctorList" :loading="loading">
+                  刷新
+                </el-button>
+              </div>
+            </template>
+
+            <el-table :data="doctorsList" style="width: 100%" v-loading="loading">
+              <el-table-column label="头像" width="80">
+                <template #default="scope">
+                  <el-avatar :size="50" :src="scope.row.avatarUrl" fit="cover">
+                    <el-icon>
+                      <el-icon-user />
+                    </el-icon>
+                  </el-avatar>
+                </template>
+              </el-table-column>
+              <el-table-column prop="name" label="姓名" width="100"></el-table-column>
+              <el-table-column prop="title" label="职称" width="120"></el-table-column>
+              <el-table-column prop="departmentName" label="科室" width="100"></el-table-column>
+              <el-table-column prop="intro" label="简介" show-overflow-tooltip>
+                <template #default="scope">
+                  <div class="doctor-intro">{{ scope.row.intro }}</div>
+                </template>
+              </el-table-column>
+              <el-table-column label="操作" width="150">
+                <template #default="scope">
+                  <el-button type="primary" size="small" @click="editDoctor(scope.row.id)">
+                    编辑
+                  </el-button>
+                  <el-button
+                    type="danger"
+                    size="small"
+                    @click="handleDeleteDoctor(scope.row.id)"
+                  >
+                    删除
+                  </el-button>
+                </template>
+              </el-table-column>
+            </el-table>
+            
+            <!-- 分页器 -->
+            <div class="pagination-container">
+              <el-pagination
+                v-if="pagination.totalPages > 1"
+                background
+                layout="prev, pager, next"
+                :total="pagination.totalPages * 10"
+                :current-page="pagination.currentPage"
+                @current-change="(page) => { pagination.currentPage = page; fetchDoctorList(); }"
+              />
             </div>
-          </el-form-item>
-
-          <el-form-item label="医生简介">
-            <el-input
-              v-model="doctorForm.intro"
-              type="textarea"
-              :rows="5"
-              placeholder="请输入医生简介，包括专业特长、工作经历等"
-            ></el-input>
-          </el-form-item>
-
-          <div class="form-btns">
-            <el-button type="primary" @click="submitDoctorInfo" :loading="loading">
-              {{ editMode ? '保存修改' : '提交' }}
-            </el-button>
-            <el-button @click="resetForm">重置</el-button>
-          </div>
-        </el-form>
-      </el-card>
-    </div>
-
-    <!-- 医生信息列表 -->
-    <div class="list-container">
-      <el-card>
-        <template #header>
-          <div class="card-header">
-            <h3>医生信息列表</h3>
-            <div>
-              <el-button type="primary" @click="fetchDoctors" :loading="loading">
-                刷新
-              </el-button>
-              <el-button type="success" @click="generateMockData">
-                生成模拟数据
-              </el-button>
-            </div>
-          </div>
-        </template>
-
-        <el-table :data="doctorsList" style="width: 100%" v-loading="loading">
-          <el-table-column label="头像" width="80">
-            <template #default="scope">
-              <el-avatar :size="50" :src="scope.row.avatarUrl" fit="cover">
-                <el-icon>
-                  <el-icon-user />
-                </el-icon>
-              </el-avatar>
-            </template>
-          </el-table-column>
-          <el-table-column prop="name" label="姓名" width="100"></el-table-column>
-          <el-table-column prop="title" label="职称" width="120"></el-table-column>
-          <el-table-column prop="keshiName" label="科室" width="100"></el-table-column>
-          <el-table-column prop="intro" label="简介" show-overflow-tooltip>
-            <template #default="scope">
-              <div class="doctor-intro">{{ scope.row.intro }}</div>
-            </template>
-          </el-table-column>
-          <el-table-column label="操作" width="150">
-            <template #default="scope">
-              <el-button type="primary" size="small" @click="editDoctor(scope.row.id)">
-                编辑
-              </el-button>
-              <el-button
-                type="danger"
-                size="small"
-                @click="deleteDoctor(scope.row.id)"
-              >
-                删除
-              </el-button>
-            </template>
-          </el-table-column>
-        </el-table>
-      </el-card>
+          </el-card>
+        </div>
+      </div>
     </div>
   </div>
 </template>
@@ -370,10 +649,64 @@ onMounted(() => {
   height: 60px;
 }
 
-.form-container, .list-container {
-  max-width: 1000px;
-  margin: 20px auto;
+.main-content {
+  display: flex;
+  gap: 20px;
+  margin-top: 20px;
   padding: 0 20px;
+}
+
+.keshi-section {
+  width: 200px;
+  background-color: rgba(255, 255, 255, 0.7);
+  padding: 15px;
+  border-radius: 4px;
+  align-self: flex-start;
+  position: sticky;
+  top: 20px;
+}
+
+.right-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.section-title {
+  margin-top: 0;
+  margin-bottom: 15px;
+  font-size: 18px;
+  color: #333;
+  font-weight: bold;
+}
+
+.keshi-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.keshi-item {
+  padding: 10px;
+  margin-bottom: 5px;
+  background-color: rgba(255, 255, 255, 0.5);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.3s;
+}
+
+.keshi-item:hover {
+  background-color: rgba(255, 255, 255, 0.8);
+}
+
+.keshi-item.is-active {
+  background-color: #9c0c15;
+  color: white;
+}
+
+.form-container, .list-container {
+  width: 100%;
 }
 
 .card-header {
@@ -439,5 +772,11 @@ onMounted(() => {
   -webkit-box-orient: vertical;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+.pagination-container {
+  margin-top: 20px;
+  display: flex;
+  justify-content: center;
 }
 </style>
