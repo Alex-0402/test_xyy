@@ -218,7 +218,7 @@ const saveDoctorSchedule = async () => {
     
     // 更新排班到后端
     await updateSchedule(currentSchedule.id, {
-      is_scheduled: false,
+      is_scheduled: currentSchedule.doctors.length > 0, // 如果有医生排班，则设置为true
       doctors: currentSchedule.doctors.map(d => d.id)
     });
     
@@ -292,7 +292,7 @@ const saveAllChanges = async () => {
     // 更新排班到后端
     try {
       await updateSchedule(currentSchedule.id, {
-        is_scheduled: false,
+        is_scheduled: currentSchedule.doctors.length > 0, // 如果有医生排班，则设置为true
         doctors: currentSchedule.doctors.map(d => d.id)
       });
       

@@ -3,7 +3,6 @@ import { ref, reactive, onMounted, computed } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import PageTitle from '../../components/PageTitle.vue';
 import UserDropdown from '../../components/UserDropdown.vue';
-import { useKeshiStore } from '../../stores/keshi';
 import { 
   fetchDoctors, 
   createDoctor, 
@@ -16,8 +15,8 @@ import {
 
 // 引入科室API，添加updateDepartment函数
 import { fetchDepartments, updateDepartment } from '../../utils/departmentApi';
+import { MEDIA_BASE_URL } from '../../utils/auth';
 
-const keshiStore = useKeshiStore();
 
 // 扩展医生信息数据结构
 const doctorForm = reactive({
@@ -36,6 +35,7 @@ const dialogVisible = ref(false);
 const imageUrl = ref('');
 const editMode = ref(false);
 const currentEditId = ref('');
+const fileInputRef = ref(null);
 
 // 当前选择的科室
 const activeKeshi = ref(null);
@@ -99,7 +99,8 @@ const fetchDoctorsFromDepartment = async (department) => {
           title: doctorDetail.title || '',
           department: department.id,
           departmentName: department.name,
-          avatarUrl: doctorDetail.avatar_url || '',
+          // 修正头像URL处理
+          avatarUrl: doctorDetail.avatar_url ? `${MEDIA_BASE_URL}${doctorDetail.avatar_url}` : '',
           intro: doctorDetail.introduction || '暂无简介'
         });
       }
@@ -302,10 +303,14 @@ const handleAvatarUpload = async (doctorId) => {
       return;
     }
     
+    loading.value = true;
     const response = await uploadDoctorAvatar(doctorId, doctorForm.avatar);
     
-    if (response && response.code === 201) {
-      console.log('头像上传成功');
+    if (response && response.code === 201 && response.url) {
+      console.log('头像上传成功, URL:', response.url);
+      // 保存完整的URL以便在界面上显示
+      const fullUrl = `${MEDIA_BASE_URL}${response.url}`;
+      imageUrl.value = fullUrl;
       return response;
     } else {
       ElMessage.warning('头像上传失败');
@@ -313,6 +318,8 @@ const handleAvatarUpload = async (doctorId) => {
   } catch (error) {
     console.error('头像上传错误:', error);
     ElMessage.error('头像上传失败');
+  } finally {
+    loading.value = false;
   }
 };
 
@@ -344,6 +351,7 @@ const beforeAvatarUpload = (file) => {
     return false;
   }
   
+  // 存储文件对象以供后续上传
   doctorForm.avatar = file;
   
   // 创建本地预览URL
@@ -352,8 +360,40 @@ const beforeAvatarUpload = (file) => {
   return false; // 阻止自动上传
 };
 
-// 处理图片上传后的预览
+// 显示文件选择对话框
+const showFileChooser = () => {
+  // 触发隐藏的文件输入框的点击事件
+  fileInputRef.value?.click();
+};
+
+// 处理手动上传图片
+const handleManualUpload = (event) => {
+  const file = event?.target?.files?.[0];
+  if (!file) return;
+  
+  const isJPG = file.type === 'image/jpeg' || file.type === 'image/png';
+  const isLt2M = file.size / 1024 / 1024 < 2;
+
+  if (!isJPG) {
+    ElMessage.error('头像图片只能是JPG或PNG格式!');
+    return;
+  }
+  if (!isLt2M) {
+    ElMessage.error('头像图片大小不能超过2MB!');
+    return;
+  }
+  
+  // 存储文件对象以供后续上传
+  doctorForm.avatar = file;
+  
+  // 创建本地预览URL
+  imageUrl.value = URL.createObjectURL(file);
+};
+
+// 处理图片上传后的预览 - 此函数保留但不会被调用，因为我们禁用了自动上传
 const handleAvatarSuccess = (response, file) => {
+  // 此函数在自动上传完成后调用，但我们已禁用自动上传
+  console.log('Avatar upload success callback triggered');
   imageUrl.value = URL.createObjectURL(file.raw);
 };
 
@@ -447,9 +487,8 @@ const editDoctor = async (id) => {
       doctorForm.introduction = doctor.introduction || '';
       
       if (doctor.avatar_url) {
-        imageUrl.value = doctor.avatar_url.startsWith('http')
-          ? doctor.avatar_url
-          : `${import.meta.env.VITE_MEDIA_BASE_URL || ''}${doctor.avatar_url}`;
+        // 统一处理头像URL，使用MEDIA_BASE_URL常量
+        imageUrl.value = `${MEDIA_BASE_URL}${doctor.avatar_url}`;
         doctorForm.avatar_url = doctor.avatar_url;
       } else {
         imageUrl.value = '';
@@ -534,19 +573,19 @@ onMounted(async () => {
               </el-row>
 
               <el-form-item label="医生头像">
-                <el-upload
-                  class="avatar-uploader"
-                  action="#"
-                  :show-file-list="false"
-                  :auto-upload="false"
-                  :on-success="handleAvatarSuccess"
-                  :before-upload="beforeAvatarUpload"
-                >
+                <div class="avatar-uploader" @click="showFileChooser">
                   <img v-if="imageUrl" :src="imageUrl" class="avatar" />
-                  <el-icon v-else class="avatar-uploader-icon">
-                    <el-icon-plus />
-                  </el-icon>
-                </el-upload>
+                  <div v-else class="avatar-uploader-icon">
+                    <el-icon><el-icon-plus /></el-icon>
+                  </div>
+                  <input 
+                    type="file" 
+                    ref="fileInputRef"
+                    style="display: none" 
+                    accept="image/jpeg,image/png"
+                    @change="handleManualUpload"
+                  />
+                </div>
                 <div class="upload-tip">
                   点击上传医生头像，支持JPG或PNG格式，大小不超过2MB
                 </div>
@@ -737,6 +776,7 @@ onMounted(async () => {
   display: flex;
   justify-content: center;
   align-items: center;
+  transition: border-color 0.3s;
 }
 
 .avatar-uploader:hover {
@@ -754,8 +794,8 @@ onMounted(async () => {
 }
 
 .avatar {
-  width: 150px;
-  height: 150px;
+  width: 100%;
+  height: 100%;
   display: block;
   object-fit: cover;
 }

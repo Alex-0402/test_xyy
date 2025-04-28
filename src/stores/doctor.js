@@ -1,207 +1,269 @@
-import { reactive } from 'vue'
-import { defineStore } from 'pinia'
+import { defineStore } from 'pinia';
+import { ref } from 'vue';
+import { fetchDoctors, getDoctorDetail, createDoctor, updateDoctor, deleteDoctor, uploadDoctorAvatar, formatDoctorData } from '../utils/doctorApi';
+import { getAccessToken, refreshAccessToken, API_BASE_URL, MEDIA_BASE_URL } from '../utils/auth';
 
 export const useDoctorStore = defineStore('doctor', () => {
-  const doctorList = reactive([
-    {
-      'id': 'jz03', 'keshi': 'jz',
-      'name': '台晓琳', 'title': '医师',
-      'pic': 'https://xyy.qd.sdu.edu.cn/taixiaolin.jpg',
-      'web': '',
-      'goodat': '急诊内科',
-      'workat': ['03.01', '03.05', '03.09', '03.13', '03.17', '03.21', '03.25', '03.29'],
-    },
-    {
-      'id': 'jz02', 'keshi': 'jz',
-      'name': '黄飞', 'title': '医师',
-      'pic': 'https://xyy.qd.sdu.edu.cn/huangfei.jpg',
-      'web': '',
-      'goodat': '急诊内科',
-      'workat': ['03.02', '03.06', '03.10', '03.14', '03.18', '03.22', '03.26', '03.30'],
-    },
-    {
-      'id': 'jz01', 'keshi': 'jz',
-      'name': '王琳', 'title': '医师',
-      'pic': 'https://xyy.qd.sdu.edu.cn/wanglin.jpg',
-      'web': '',
-      'goodat': '外科',
-      'workat': ['03.03', '03.07', '03.11', '03.15', '03.19', '03.23', '03.27', '03.31'],
-    },
-    {
-      'id': 'jz04', 'keshi': 'jz',
-      'name': '魏典吉', 'title': '医师',
-      'pic': 'https://xyy.qd.sdu.edu.cn/weidianji.jpg',
-      'web': '',
-      'goodat': '急诊内科',
-      'workat': ['03.04', '03.08', '03.12', '03.16', '03.20', '03.24', '03.28'],
-    },
-    {
-      'id': 'kq01', 'keshi': 'kq',
-      'name': '吕佳', 'title': ' 副主任医师',
-      'pic': 'https://oss.qlyyqd.com/20230714/193714693_144_200_0.jpg',
-      'web': 'https://www.qlyyqd.com/expert/2025/y1aKYldQ.html',
-      'goodat': '1.口腔前牙美学修复；2.缺失牙的种植义齿修复、固定义齿修复、活动义齿修复；3.牙列严重磨耗的咬合重建修复；4.牙周病的序列治疗；5.常规以及疑难的全口义齿修复；6.双套冠、磁性附着体等覆盖义齿修复。',
-      'workat': ['03.14'],
-    },
-    {
-      'id': 'kq02', 'keshi': 'kq',
-      'name': '邵玉婷', 'title': '副主任医师',
-      'pic': 'https://oss.qlyyqd.com/20230714/193149490_144_200_0.jpg',
-      'web': 'https://www.qlyyqd.com/expert/2025/jneg7Zew.html',
-      'goodat': '自锁托槽矫治技术、隐形矫治技术、正畸正合手术联合治疗、生长期早期矫治。',
-      'workat': ['03.07'],
-    },
-    {
-      'id': 'kq03', 'keshi': 'kq',
-      'name': '王化淳', 'title': '副主任医师',
-      'pic': 'https://oss.qlyyqd.com/20230714/193350680_144_200_0.jpg',
-      'web': 'https://www.qlyyqd.com/expert/2025/APdRMzbG.html',
-      'goodat': '擅长微创复杂牙拔除术、牙种植手术，对美学区种植与骨增量手术有较为深入的研究。',
-      'workat': ['03.31'],
-    },
-    {
-      'id': 'kq04', 'keshi': 'kq',
-      'name': '王斐', 'title': '主治医师',
-      'pic': 'https://oss.qlyyqd.com/20230714/085734885_144_200_0.jpg',
-      'web': 'https://www.qlyyqd.com/expert/2025/y1aK4lbQ.html',
-      'goodat': '前牙美学树脂修复、牙体牙髓复杂病治疗，牙周洁治刮治、牙周组织手术治疗、后牙嵌体修复。',
-      'workat': ['03.03'],
-    },
-    {
-      'id': 'kq05', 'keshi': 'kq',
-      'name': '王娜娜', 'title': '医师',
-      'pic': 'https://oss.qlyyqd.com/20230714/194328296_144_200_0.jpg',
-      'web': 'https://www.qlyyqd.com/expert/2025/openzDe7.html',
-      'goodat': '儿童及成人各类错颌畸形的矫治，颌骨畸形正颌手术前后的正畸治疗，隐形矫治技术、直丝弓固定矫治、功能矫治技术等。',
-      'workat': ['03.10'],
-    },
-    {
-      'id': 'kq06', 'keshi': 'kq',
-      'name': '范利平', 'title': '医师',
-      'pic': 'https://oss.qlyyqd.com/20230714/192835686_144_200_0.jpg',
-      'web': 'https://www.qlyyqd.com/expert/2025/JxbovAag.html',
-      'goodat': '',
-      'workat': ['03.21'],
-    },
-    {
-      'id': 'kq07', 'keshi': 'kq',
-      'name': '张永喆', 'title': '医师',
-      'pic': 'https://oss.qlyyqd.com/20230714/193103331_144_200_0.jpg',
-      'web': 'https://www.qlyyqd.com/expert/2025/WPe9OYbL.html',
-      'goodat': '口腔修复科常见病，固定、活动义齿修复，嵌体修复，复杂种植牙及无牙颌种植修复。',
-      'workat': ['03.24'],
-    },
-    {
-      'id': 'kq08', 'keshi': 'kq',
-      'name': '鲍恩', 'title': '医师',
-      'pic': 'https://oss.qlyyqd.com/20230714/192535953_144_200_0.jpg',
-      'web': 'https://www.qlyyqd.com/expert/2025/MvbmEAbY.html',
-      'goodat': '擅长各类牙齿的拔出，牙种植及并发症的处理。',
-      'workat': ['03.28'],
-    },
-    {
-      'id': 'kq09', 'keshi': 'kq',
-      'name': '解志强', 'title': '',
-      'pic': '',
-      'web': '',
-      'goodat': '',
-      'workat': ['03.17'],
-    },
-    {
-      'id': 'yk01', 'keshi': 'yk',
-      'name': '徐健', 'title': '主治医师',
-      'pic': 'https://oss.qlyyqd.com/20230714/194628300_144_200_0.jpg',
-      'web': 'https://www.qlyyqd.com/expert/2025/nXe0DNex.html',
-      'goodat': '角膜病、眼表疾病、近视防控。',
-      'workat': ['03.01', '03.29'],
-    },
-    {
-      'id': 'yk02', 'keshi': 'yk',
-      'name': '刘刚', 'title': '主治医师',
-      'pic': 'https://oss.qlyyqd.com/20230714/194551403_144_200_0.jpg',
-      'web': 'https://www.qlyyqd.com/expert/2025/open6pe7.html',
-      'goodat': '对眼科各种眼表疾病、儿童近视防控、角膜病、青光眼、白内障、眼底病具有丰富的诊疗经验。曾在北京同仁医院进修学习眼底病专业，能够对于老年性黄斑变性、糖尿病视网膜病变、视网膜血管性疾病、视网膜脱离等常见...',
-      'workat': ['02.22'],
-    },
-    {
-      'id': 'yk03', 'keshi': 'yk',
-      'name': '闫瑞嘉', 'title': '',
-      'pic': 'https://oss.qlyyqd.com/20230816/155609292_144_200_0.jpg',
-      'web': 'https://www.qlyyqd.com/expert/2025/olej64ej.html',
-      'goodat': '',
-      'workat': ['03.08'],
-    },
-    {
-      'id': 'yk04', 'keshi': 'yk',
-      'name': '张新爱', 'title': '',
-      'pic': '',
-      'web': 'https://www.qlyyqd.com/expert/2025/MvbmN3dY.html',
-      'goodat': '',
-      'workat': ['03.22'],
-    },
-    {
-      'id': 'eb01', 'keshi': 'eb',
-      'name': '马岩', 'title': '医师',
-      'pic': 'https://oss.qlyyqd.com/20230714/161213687_144_200_0.jpg',
-      'web': 'https://www.qlyyqd.com/expert/2025/K9b6mLaE.html',
-      'goodat': '以咳嗽、咽痛、咽喉部异物感等为主要表现的急慢性咽喉炎、以声音嘶哑为主要表现的声带息肉/结节、咽喉部异物、甲状腺及颈部包块等咽喉头颈疾病及耳鼻常见疾病的诊治。',
-      'workat': ['03.02'],
-    },
-    {
-      'id': 'eb02', 'keshi': 'eb',
-      'name': '杨珂', 'title': '医师',
-      'pic': 'https://oss.qlyyqd.com/20230714/161402975_144_200_0.jpg',
-      'web': 'https://www.qlyyqd.com/expert/2025/l9avmLeG.html',
-      'goodat': '以睡眠打鼾、憋气、呼吸暂停等为主要表现的阻塞性睡眠呼吸暂停综合征、以鼻塞、流涕等为主要表现的急慢性鼻炎/鼻窦炎、耳聋、耳鸣、眩晕、外耳道及耳周感染等耳鼻咽喉常见疾病的诊治。',
-      'workat': ['03.15'],
-    },
-    {
-      'id': 'eb03', 'keshi': 'eb',
-      'name': '付博', 'title': '医师',
-      'pic': 'https://oss.qlyyqd.com/20230714/161336422_144_200_0.jpg',
-      'web': 'https://www.qlyyqd.com/expert/2025/46dB12b7.html',
-      'goodat': '以咳嗽、咽痛、咽喉部异物感等为主要表现的急慢性咽喉炎、以声音嘶哑为主要表现的声带息肉/结节、咽喉部异物、甲状腺及颈部包块等咽喉头颈疾病及耳鼻常见疾病的诊治。',
-      'workat': ['03.22'],
-    },
-    {
-      'id': 'eb04', 'keshi': 'eb',
-      'name': '杨金荣', 'title': ' ',
-      'pic': 'https://oss.qlyyqd.com/20210702/165300289_144_200_0.jpg',
-      'web': 'https://www.qlyyqd.com/expert/2025/GRb4kgaB.html',
-      'goodat': '',
-      'workat': ['03.08'],
-    },
-    {
-      'id': 'eb05', 'keshi': 'eb',
-      'name': '肖富亮', 'title': '',
-      'pic': '',
-      'web': 'https://www.qlyyqd.com/expert/2025/l9avPMdG.html',
-      'goodat': '',
-      'workat': ['03.29'],
-    },
-    {
-      'id': 'xl01', 'keshi': 'xl',
-      'name': '王新起', 'title': '医师',
-      'pic': 'https://oss.qlyyqd.com/20230714/162803819_144_200_0.jpg',
-      'web': 'https://www.qlyyqd.com/expert/2024/GRb4VkeB.html',
-      'goodat': '擅长焦虑、抑郁、强迫、躯体形式障碍及睡眠障碍等诊治。',
-      'workat': ['03.05', '03.19'],
-    },
+  // 存储所有医生信息
+  const doctorList = ref([]);
+  
+  // 按科室ID存储医生列表
+  const doctorsByDepartment = ref({});
+  
+  // 加载状态
+  const loading = ref(false);
+  
+  // 错误信息
+  const error = ref(null);
 
-  ])
+  // 获取所有医生
+  async function fetchAllDoctors() {
+    loading.value = true;
+    error.value = null;
+    
+    try {
+      const response = await fetchDoctors();
+      if (response && response.code === 200 && Array.isArray(response.data?.doctor_list)) {
+        doctorList.value = response.data.doctor_list.map(formatDoctorData);
+        return doctorList.value;
+      } else {
+        throw new Error(response?.message || '获取医生数据格式错误');
+      }
+    } catch (err) {
+      console.error('获取医生列表失败:', err);
+      error.value = '获取医生列表失败: ' + (err.message || '未知错误');
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  }
 
-  // 生成与现有医生信息匹配的模拟数据
-  const getMockDoctorData = () => {
-    return doctorList.map(doctor => ({
-      id: doctor.id,
-      name: doctor.name,
-      title: doctor.title,
-      pic: doctor.pic,
-      web: doctor.web,
-      goodat: doctor.goodat,
-      workat: doctor.workat,
-    }));
+  // 按科室获取医生列表
+  async function fetchDoctorsByDepartment(departmentId) {
+    if (!departmentId) {
+      console.error('科室ID不能为空');
+      return [];
+    }
+
+    loading.value = true;
+    error.value = null;
+    
+    try {
+      // 如果已经有缓存的数据，直接返回
+      if (doctorsByDepartment.value[departmentId]) {
+        return doctorsByDepartment.value[departmentId];
+      }
+      
+      // 从部门详情API获取医生列表
+      const response = await getDepartmentDetail(departmentId);
+      
+      if (response && response.code === 200 && response.data) {
+        const doctors = response.data.doctors || [];
+        
+        // 格式化医生数据
+        const formattedDoctors = doctors.map(doctor => {
+          return {
+            id: doctor.id,
+            name: doctor.name,
+            title: doctor.title || '',
+            introduction: doctor.introduction || '暂无简介',
+            avatarUrl: doctor.avatar_url ? (MEDIA_BASE_URL + doctor.avatar_url) : '',
+            departmentId: departmentId
+          };
+        });
+        
+        // 存储到科室医生映射中
+        doctorsByDepartment.value[departmentId] = formattedDoctors;
+        
+        return formattedDoctors;
+      } else {
+        throw new Error(response?.message || '获取科室医生数据格式错误');
+      }
+    } catch (err) {
+      console.error(`获取科室${departmentId}的医生列表失败:`, err);
+      error.value = '获取科室医生列表失败: ' + (err.message || '未知错误');
+      return [];
+    } finally {
+      loading.value = false;
+    }
+  }
+  
+  // 获取单个医生详情
+  async function getDoctorById(doctorId) {
+    if (!doctorId) {
+      console.error('医生ID不能为空');
+      return null;
+    }
+
+    loading.value = true;
+    error.value = null;
+    
+    try {
+      const response = await getDoctorDetail(doctorId);
+      
+      if (response && response.code === 200 && response.data) {
+        return formatDoctorData(response.data);
+      } else {
+        throw new Error(response?.message || '获取医生详情格式错误');
+      }
+    } catch (err) {
+      console.error(`获取医生${doctorId}详情失败:`, err);
+      error.value = '获取医生详情失败: ' + (err.message || '未知错误');
+      return null;
+    } finally {
+      loading.value = false;
+    }
+  }
+  
+  // 创建医生
+  async function addDoctor(doctorData) {
+    loading.value = true;
+    error.value = null;
+    
+    try {
+      const response = await createDoctor(doctorData);
+      
+      if (response && response.code === 201 && response.data) {
+        // 添加到医生列表
+        const newDoctor = formatDoctorData(response.data);
+        doctorList.value.push(newDoctor);
+        
+        // 如果有科室ID，也添加到对应科室的医生列表中
+        if (doctorData.departmentId && doctorsByDepartment.value[doctorData.departmentId]) {
+          doctorsByDepartment.value[doctorData.departmentId].push(newDoctor);
+        }
+        
+        return newDoctor;
+      } else {
+        throw new Error(response?.message || '创建医生格式错误');
+      }
+    } catch (err) {
+      console.error('创建医生失败:', err);
+      error.value = '创建医生失败: ' + (err.message || '未知错误');
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  }
+  
+  // 更新医生
+  async function updateDoctorInfo(doctorId, doctorData) {
+    loading.value = true;
+    error.value = null;
+    
+    try {
+      const response = await updateDoctor(doctorId, doctorData);
+      
+      if (response && (response.code === 200 || response.code === 201) && response.data) {
+        const updatedDoctor = formatDoctorData(response.data);
+        
+        // 更新医生列表
+        const index = doctorList.value.findIndex(doc => doc.id === doctorId);
+        if (index !== -1) {
+          doctorList.value[index] = updatedDoctor;
+        }
+        
+        // 更新科室医生列表
+        Object.keys(doctorsByDepartment.value).forEach(deptId => {
+          const deptIndex = doctorsByDepartment.value[deptId].findIndex(doc => doc.id === doctorId);
+          if (deptIndex !== -1) {
+            doctorsByDepartment.value[deptId][deptIndex] = updatedDoctor;
+          }
+        });
+        
+        return updatedDoctor;
+      } else {
+        throw new Error(response?.message || '更新医生格式错误');
+      }
+    } catch (err) {
+      console.error(`更新医生${doctorId}失败:`, err);
+      error.value = '更新医生失败: ' + (err.message || '未知错误');
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  }
+  
+  // 删除医生
+  async function removeDoctorById(doctorId) {
+    loading.value = true;
+    error.value = null;
+    
+    try {
+      const response = await deleteDoctor(doctorId);
+      
+      if (response && (response.code === 204 || response.code === 200)) {
+        // 从医生列表移除
+        doctorList.value = doctorList.value.filter(doc => doc.id !== doctorId);
+        
+        // 从各科室医生列表移除
+        Object.keys(doctorsByDepartment.value).forEach(deptId => {
+          doctorsByDepartment.value[deptId] = doctorsByDepartment.value[deptId].filter(doc => doc.id !== doctorId);
+        });
+        
+        return { id: doctorId, deleted: true };
+      } else {
+        throw new Error(response?.message || '删除医生格式错误');
+      }
+    } catch (err) {
+      console.error(`删除医生${doctorId}失败:`, err);
+      error.value = '删除医生失败: ' + (err.message || '未知错误');
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  }
+  
+  // 上传医生头像
+  async function uploadAvatar(doctorId, imageFile) {
+    loading.value = true;
+    error.value = null;
+    
+    try {
+      const response = await uploadDoctorAvatar(doctorId, imageFile);
+      
+      if (response && response.code === 201 && response.url) {
+        // 更新医生头像URL
+        const fullUrl = MEDIA_BASE_URL + response.url;
+        
+        // 更新医生列表
+        const index = doctorList.value.findIndex(doc => doc.id === doctorId);
+        if (index !== -1) {
+          doctorList.value[index].avatarUrl = fullUrl;
+        }
+        
+        // 更新科室医生列表
+        Object.keys(doctorsByDepartment.value).forEach(deptId => {
+          const deptIndex = doctorsByDepartment.value[deptId].findIndex(doc => doc.id === doctorId);
+          if (deptIndex !== -1) {
+            doctorsByDepartment.value[deptId][deptIndex].avatarUrl = fullUrl;
+          }
+        });
+        
+        return { id: doctorId, avatarUrl: fullUrl };
+      } else {
+        throw new Error(response?.message || '上传头像格式错误');
+      }
+    } catch (err) {
+      console.error(`上传医生${doctorId}头像失败:`, err);
+      error.value = '上传头像失败: ' + (err.message || '未知错误');
+      throw err;
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  return {
+    doctorList,
+    doctorsByDepartment,
+    loading,
+    error,
+    fetchAllDoctors,
+    fetchDoctorsByDepartment,
+    getDoctorById,
+    addDoctor,
+    updateDoctorInfo,
+    removeDoctorById,
+    uploadAvatar
   };
-
-  return { doctorList, getMockDoctorData }
-})
+});
