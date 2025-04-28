@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getAccessToken } from '../utils/auth'; // 修正了导入的函数名
+import { getAccessToken } from '../utils/auth';
 
 // 修正为正确的后端API端口
 const BASE_URL = 'http://38.38.251.86:8000/api';
@@ -26,9 +26,16 @@ export async function getDepartments() {
  */
 export async function getDepartmentSchedules(departmentId) {
   try {
+    // 直接调用获取科室排班的API，后端会返回当前月和下个月的排班
     const response = await axios.get(`${BASE_URL}/departments/${departmentId}/schedules/`);
     if (response.data.code === 200) {
-      return response.data.data;
+      // 将返回数据结构化，添加日期格式化
+      const schedules = response.data.data.map(schedule => ({
+        ...schedule,
+        // 添加日期字符串，用于前端显示和处理
+        date_obj: new Date(schedule.date)
+      }));
+      return schedules;
     }
     throw new Error('获取科室排班失败');
   } catch (error) {
@@ -77,15 +84,21 @@ export async function getScheduleDetail(scheduleId) {
  */
 export async function updateSchedule(scheduleId, data) {
   try {
-    const token = getAccessToken(); // 修正了函数名
+    const token = getAccessToken();
     
     if (!token) {
       throw new Error('未登录或token已过期');
     }
-    console.log('data:', data);
+    
+    // 只发送必要的字段：is_scheduled和doctors
+    const updateData = {
+      is_scheduled: data.is_scheduled,
+      doctors: data.doctors
+    };
+    
     const response = await axios.put(
       `${BASE_URL}/schedules/${scheduleId}/`,
-      data,
+      updateData,
       {
         headers: {
           'Authorization': `Bearer ${token}`

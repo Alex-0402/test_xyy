@@ -1,36 +1,73 @@
 <script setup>
 import moment from 'moment';
 import PageTitle from '../../components/PageTitle.vue';
-import KeshiNav from '../../components/KeshiNav.vue';
 import UserDropdown from '../../components/UserDropdown.vue';
-import { computed, ref, reactive, onMounted } from 'vue';
-import { useKeshiStore } from '../../stores/keshi';
-import { useDoctorStore } from "../../stores/doctor";
+import { computed, ref, onMounted } from 'vue';
 import { ElMessage, ElMessageBox, ElLoading } from 'element-plus';
 import '@/assets/styles/common.css';
 import { 
   getDepartments, 
   getDepartmentSchedules, 
   updateSchedule, 
-  getDepartmentDoctors,
-  getScheduleDetail
+  getDepartmentDoctors
 } from '../../utils/scheduleApi';
 
-const keshiStore = useKeshiStore();
-const doctorStore = useDoctorStore();
-
-// 获取当前日期和未来两周的日期
+// 获取当前月和下个月的日期
 const weekdaysShort = '周日_周一_周二_周三_周四_周五_周六'.split('_');
-const datesFromToday = [];
-for (let i = 0; i < 14; i++) {
-  datesFromToday.push(moment().add(i, 'days'));
+
+// 修改为获取本月和下个月的全部日期
+const currentMonth = moment().startOf('month');
+const nextMonth = moment().add(1, 'month').startOf('month');
+const currentMonthDays = currentMonth.daysInMonth();
+const nextMonthDays = nextMonth.daysInMonth();
+
+// 生成两个月的日期
+const allDates = [];
+// 本月日期
+for (let i = 0; i < currentMonthDays; i++) {
+  allDates.push(moment().startOf('month').add(i, 'days'));
+}
+// 下个月日期
+for (let i = 0; i < nextMonthDays; i++) {
+  allDates.push(moment().add(1, 'month').startOf('month').add(i, 'days'));
 }
 
-// 将日期分成两周
-const firstWeekDates = datesFromToday.slice(0, 7);
-const secondWeekDates = datesFromToday.slice(7, 14);
+// 按月份和周分组日期
+const datesByMonth = {};
+const datesByWeek = {};
 
-const showDate = ref(datesFromToday[0]);
+allDates.forEach(date => {
+  // 按月份分组
+  const monthKey = date.format('YYYY-MM');
+  if (!datesByMonth[monthKey]) {
+    datesByMonth[monthKey] = [];
+    // 为每个月初始化周分组
+    datesByWeek[monthKey] = [];
+  }
+  datesByMonth[monthKey].push(date);
+});
+
+// 将每个月的日期按每7天分成一周
+Object.keys(datesByMonth).forEach(monthKey => {
+  const monthDates = datesByMonth[monthKey];
+  const weeks = [];
+  
+  for (let i = 0; i < monthDates.length; i += 7) {
+    weeks.push(monthDates.slice(i, i + 7));
+  }
+  
+  datesByWeek[monthKey] = weeks;
+});
+
+// 取得月份列表
+const monthKeys = Object.keys(datesByMonth);
+const monthNames = monthKeys.map(key => {
+  const [year, month] = key.split('-');
+  return `${year}年${month}月`;
+});
+
+const showDate = ref(allDates[0]);
+const activeMonthIndex = ref(0); // 当前显示的月份索引
 const tableData = ref([]);
 const loading = ref(false);
 const dialogVisible = ref(false);
@@ -38,20 +75,9 @@ const editingDoctor = ref(null);
 const departments = ref([]);
 const activeKeshi = ref(null);
 const scheduleMap = ref({});  // 用于存储科室两周的排班信息
-const modified = ref(false);  // 标记是否有未保存的修改
 
-// 根据日期获取cycle_day (1-14)
-const getCycleDay = (date) => {
-  const today = moment().startOf('day');
-  const targetDate = moment(date).startOf('day');
-  const diffDays = targetDate.diff(today, 'days');
-  return diffDays + 1;
-};
-
-// 根据cycle_day获取日期
-const getDateByCycleDay = (cycleDay) => {
-  return moment().add(cycleDay - 1, 'days');
-};
+// 添加更新触发器，用于强制重新计算 dateHasSchedule
+const scheduleUpdateTrigger = ref(0);
 
 // 初始化数据
 onMounted(async () => {
@@ -82,18 +108,19 @@ const loadDepartmentSchedules = async (departmentId) => {
     loading.value = true;
     const schedules = await getDepartmentSchedules(departmentId);
     console.log('schedules:', schedules);
+    
     // 初始化或重置排班映射
     scheduleMap.value = {};
     
-    // 将排班数据按cycle_day组织并映射到对应日期
+    // 将排班数据按日期映射到对应的键值
     schedules.forEach(schedule => {
-      const cycleDay = schedule.cycle_day;
-      const scheduleDate = getDateByCycleDay(cycleDay);
-      const dateKey = scheduleDate.format('MM.DD');
+      // 使用日期字符串作为键
+      const dateObj = new Date(schedule.date);
+      const dateKey = moment(dateObj).format('MM.DD');
       
       scheduleMap.value[dateKey] = {
         ...schedule,
-        date: scheduleDate.format('YYYY-MM-DD')
+        date: schedule.date // 保持原始日期格式
       };
     });
     
@@ -112,6 +139,14 @@ const keshiList = computed(() => {
   return departments.value;
 });
 
+// 切换月份显示
+function changeMonth(monthIndex) {
+  activeMonthIndex.value = monthIndex;
+  // 选中该月第一天
+  showDate.value = datesByMonth[monthKeys[monthIndex]][0];
+  loadDoctorData();
+}
+
 // 切换日期
 function changeShowDate(date) {
   showDate.value = date;
@@ -120,24 +155,6 @@ function changeShowDate(date) {
 
 // 切换科室
 async function changeKeshi(keshi) {
-  if (modified.value) {
-    const result = await ElMessageBox.confirm(
-      '有未保存的排班修改，是否保存当前修改？',
-      '未保存修改',
-      {
-        confirmButtonText: '保存',
-        cancelButtonText: '不保存',
-        type: 'warning'
-      }
-    ).catch(() => 'cancel');
-    
-    if (result === 'confirm') {
-      await saveAllChanges();
-    }
-    
-    modified.value = false;
-  }
-  
   activeKeshi.value = keshi;
   await loadDepartmentSchedules(keshi.id);
 }
@@ -155,7 +172,7 @@ const loadDoctorData = async () => {
     // 获取当前日期的排班
     const currentDate = showDate.value.format('MM.DD');
     const currentSchedule = scheduleMap.value[currentDate];
-    console.log('scheduleMap:', scheduleMap.value);
+    
     if (!currentSchedule) {
       // 如果没有当前日期的排班数据
       ElMessage.warning('无法获取当前日期排班数据，请刷新页面重试');
@@ -165,8 +182,12 @@ const loadDoctorData = async () => {
     }
     
     // 检查医生是否在选定日期出诊
+    // 注意：这里假设currentSchedule.doctors是医生信息的数组，如果只是id数组，需要调整逻辑
     tableData.value = departmentDoctors.map(doctor => {
-      const isScheduled = currentSchedule.doctors.some(d => d.id === doctor.id);
+      // 根据医生ID判断是否已排班
+      const isScheduled = currentSchedule.doctors.some(d => {
+        return (typeof d === 'object' ? d.id : d) === doctor.id;
+      });
       
       return {
         ...doctor,
@@ -188,16 +209,19 @@ const editDoctorSchedule = (doctor) => {
   dialogVisible.value = true;
 };
 
-// 保存医生排班更改
+// 保存医生排班更改 - 更新为立即保存
 const saveDoctorSchedule = async () => {
   const formattedDate = showDate.value.format('MM.DD');
   
   try {
+    const loadingInstance = ElLoading.service({ fullscreen: true, text: '保存中...' });
+    
     // 获取当前日期的排班
     const currentSchedule = scheduleMap.value[formattedDate];
     
     if (!currentSchedule) {
       ElMessage.error('无法获取当前日期排班数据');
+      loadingInstance.close();
       return;
     }
     
@@ -222,10 +246,18 @@ const saveDoctorSchedule = async () => {
       doctors: currentSchedule.doctors.map(d => d.id)
     });
     
+    // 更新is_scheduled状态
+    currentSchedule.is_scheduled = currentSchedule.doctors.length > 0;
+    
+    // 增加触发器值，强制重新计算 dateHasSchedule
+    scheduleUpdateTrigger.value++;
+    
     ElMessage.success(`已${editingDoctor.value.isScheduled ? '添加' : '取消'}${editingDoctor.value.name}在${formattedDate}的出诊`);
     
     // 刷新表格数据
     await loadDoctorData();
+    
+    loadingInstance.close();
   } catch (error) {
     ElMessage.error('保存排班失败');
     console.error('保存排班失败:', error);
@@ -234,7 +266,7 @@ const saveDoctorSchedule = async () => {
   dialogVisible.value = false;
 };
 
-// 批量更改排班状态
+// 修改批量更改排班状态的函数
 const changeScheduleStatus = async (index, row, status) => {
   const formattedDate = showDate.value.format('MM.DD');
   
@@ -247,57 +279,44 @@ const changeScheduleStatus = async (index, row, status) => {
       return;
     }
     
-    // 标记有修改
-    modified.value = true;
-    
-    // 更新本地数据，先不发送到后端
-    row.isScheduled = status;
-    
-    // 在本地更新医生列表
-    if (status) {
-      if (!currentSchedule.doctors.some(d => d.id === row.id)) {
-        currentSchedule.doctors.push({
-          id: row.id,
-          name: row.name,
-          title: row.title
-        });
-      }
-    } else {
-      currentSchedule.doctors = currentSchedule.doctors.filter(d => d.id !== row.id);
-    }
-    
-    ElMessage.success(`已${status ? '添加' : '取消'}${row.name}在${formattedDate}的出诊（未保存）`);
-  } catch (error) {
-    ElMessage.error('更改排班状态失败');
-    console.error('更改排班状态失败:', error);
-    loadDoctorData(); // 重新加载以恢复状态
-  }
-};
-
-// 保存所有更改
-const saveAllChanges = async () => {
-  try {
     const loadingInstance = ElLoading.service({ fullscreen: true, text: '保存中...' });
     
-    // 获取当前日期的排班
-    const formattedDate = showDate.value.format('MM.DD');
-    const currentSchedule = scheduleMap.value[formattedDate];
+    // 更新本地数据
+    row.isScheduled = status;
     
-    if (!currentSchedule) {
-      ElMessage.error('无法获取当前日期排班数据');
-      loadingInstance.close();
-      return;
+    // 在本地更新医生列表（只保存ID）
+    let doctorIds;
+    if (status) {
+      // 获取当前所有医生ID
+      doctorIds = currentSchedule.doctors.map(d => typeof d === 'object' ? d.id : d);
+      // 添加当前医生ID（如果不存在）
+      if (!doctorIds.includes(row.id)) {
+        doctorIds.push(row.id);
+      }
+    } else {
+      // 从排班中移除该医生ID
+      doctorIds = currentSchedule.doctors
+        .map(d => typeof d === 'object' ? d.id : d)
+        .filter(id => id !== row.id);
     }
     
-    // 更新排班到后端
+    // 立即保存到后端
     try {
       await updateSchedule(currentSchedule.id, {
-        is_scheduled: currentSchedule.doctors.length > 0, // 如果有医生排班，则设置为true
-        doctors: currentSchedule.doctors.map(d => d.id)
+        is_scheduled: doctorIds.length > 0, // 如果有医生排班，则设置为true
+        doctors: doctorIds
       });
       
-      modified.value = false;
-      ElMessage.success('排班更改已保存');
+      ElMessage.success(`已${status ? '添加' : '取消'}${row.name}在${formattedDate}的出诊`);
+      
+      // 更新本地缓存的医生列表
+      currentSchedule.doctors = doctorIds;
+      
+      // 更新is_scheduled状态
+      currentSchedule.is_scheduled = doctorIds.length > 0;
+      
+      // 增加触发器值，强制重新计算 dateHasSchedule
+      scheduleUpdateTrigger.value++;
     } catch (error) {
       if (error.message === '身份验证失败，请重新登录') {
         ElMessageBox.alert('登录已过期，请重新登录', '提示', {
@@ -309,18 +328,92 @@ const saveAllChanges = async () => {
         });
       } else {
         ElMessage.error(`保存排班失败: ${error.message}`);
+        // 恢复原始状态
+        row.isScheduled = !status;
+        // 重新加载数据
+        loadDoctorData();
       }
     }
     
     loadingInstance.close();
   } catch (error) {
-    ElMessage.error('保存排班失败');
-    console.error('保存排班失败:', error);
+    ElMessage.error('更改排班状态失败');
+    console.error('更改排班状态失败:', error);
+    loadDoctorData(); // 重新加载以恢复状态
   }
 };
 
+// 可以保留saveAllChanges但不再使用，以备将来需要批量保存功能
+// const saveAllChanges = async () => {
+//   try {
+//     const loadingInstance = ElLoading.service({ fullscreen: true, text: '保存中...' });
+    
+//     // 获取当前日期的排班
+//     const formattedDate = showDate.value.format('MM.DD');
+//     const currentSchedule = scheduleMap.value[formattedDate];
+    
+//     if (!currentSchedule) {
+//       ElMessage.error('无法获取当前日期排班数据');
+//       loadingInstance.close();
+//       return;
+//     }
+    
+//     // 更新排班到后端
+//     try {
+//       await updateSchedule(currentSchedule.id, {
+//         is_scheduled: currentSchedule.doctors.length > 0, // 如果有医生排班，则设置为true
+//         doctors: currentSchedule.doctors.map(d => d.id)
+//       });
+      
+//       modified.value = false;
+//       ElMessage.success('排班更改已保存');
+//     } catch (error) {
+//       if (error.message === '身份验证失败，请重新登录') {
+//         ElMessageBox.alert('登录已过期，请重新登录', '提示', {
+//           confirmButtonText: '确定',
+//           callback: () => {
+//             // 重定向到登录页面
+//             window.location.href = '/login';
+//           }
+//         });
+//       } else {
+//         ElMessage.error(`保存排班失败: ${error.message}`);
+//       }
+//     }
+    
+//     loadingInstance.close();
+//   } catch (error) {
+//     ElMessage.error('保存排班失败');
+//     console.error('保存排班失败:', error);
+//   }
+// };
+
 // 修复BASE_URL为正确的API端口
 const BASE_URL = 'http://38.38.251.86:8000/api';
+
+// 添加检查日期是否有排班的函数
+const hasScheduleForDate = (date) => {
+  const dateKey = date.format('MM.DD');
+  const schedule = scheduleMap.value[dateKey];
+  
+  if (schedule) {
+    // 检查排班是否有医生并且is_scheduled为true
+    return schedule.is_scheduled && schedule.doctors && schedule.doctors.length > 0;
+  }
+  return false;
+};
+
+// 计算每个日期是否有排班
+const dateHasSchedule = computed(() => {
+  // 添加依赖以便在排班更新时重新计算
+  const trigger = scheduleUpdateTrigger.value;
+  
+  const result = {};
+  allDates.forEach(date => {
+    result[date.format('MM.DD')] = hasScheduleForDate(date);
+  });
+  return result;
+});
 </script>
 
 <template>
@@ -332,23 +425,37 @@ const BASE_URL = 'http://38.38.251.86:8000/api';
     <page-title title="排班管理" icon-name="icon-rili"></page-title>
     
     <div class="top">
-      <!-- 两周日期分成上下两排显示 -->
-      <ul class="date-nav">
-        <li v-for="(date, index) in firstWeekDates" :key="'week1-' + index" class="date-item"
-          :class="{ 'is-active': showDate.format('YYYY-MM-DD') === date.format('YYYY-MM-DD') }" 
-          @click="changeShowDate(date)">
-          <p>{{ date.format('MM.DD') }}</p>
-          <p>{{ weekdaysShort[date.day()] }}</p>
-        </li>
-      </ul>
-      <ul class="date-nav">
-        <li v-for="(date, index) in secondWeekDates" :key="'week2-' + index" class="date-item"
-          :class="{ 'is-active': showDate.format('YYYY-MM-DD') === date.format('YYYY-MM-DD') }" 
-          @click="changeShowDate(date)">
-          <p>{{ date.format('MM.DD') }}</p>
-          <p>{{ weekdaysShort[date.day()] }}</p>
-        </li>
-      </ul>
+      <!-- 月份选择器 -->
+      <div class="month-selector">
+        <div 
+          v-for="(name, index) in monthNames" 
+          :key="index" 
+          class="month-item"
+          :class="{ 'is-active': activeMonthIndex === index }"
+          @click="changeMonth(index)"
+        >
+          {{ name }}
+        </div>
+      </div>
+      
+      <!-- 当前选中月份的日期显示，按周显示，每周一行 -->
+      <div class="dates-container" v-if="datesByMonth[monthKeys[activeMonthIndex]]">
+        <ul class="date-nav" v-for="(weekDates, weekIndex) in datesByWeek[monthKeys[activeMonthIndex]]" :key="weekIndex">
+          <li 
+            v-for="(date, dateIndex) in weekDates" 
+            :key="dateIndex" 
+            class="date-item"
+            :class="{ 
+              'is-active': showDate.format('YYYY-MM-DD') === date.format('YYYY-MM-DD'),
+              'has-schedule': dateHasSchedule[date.format('MM.DD')]
+            }"
+            @click="changeShowDate(date)"
+          >
+            <p>{{ date.format('MM.DD') }}</p>
+            <p>{{ weekdaysShort[date.day()] }}</p>
+          </li>
+        </ul>
+      </div>
     </div>
 
     <div class="main">
@@ -370,7 +477,6 @@ const BASE_URL = 'http://38.38.251.86:8000/api';
             {{ activeKeshi ? activeKeshi.name : '请选择科室' }} - 
             {{ showDate.format('YYYY年MM月DD日') }} {{ weekdaysShort[showDate.day()] }}排班情况
           </h3>
-          <el-button type="primary" @click="saveAllChanges" :disabled="!activeKeshi || !modified">保存更改</el-button>
         </div>
         
         <el-table
@@ -396,7 +502,7 @@ const BASE_URL = 'http://38.38.251.86:8000/api';
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="200">
+          <el-table-column label="操作" width="140">
             <template #default="scope">
               <el-button
                 :type="scope.row.isScheduled ? 'danger' : 'primary'"
@@ -405,20 +511,13 @@ const BASE_URL = 'http://38.38.251.86:8000/api';
               >
                 {{ scope.row.isScheduled ? '取消排班' : '添加排班' }}
               </el-button>
-              <el-button
-                type="info"
-                size="small"
-                @click="editDoctorSchedule(scope.row)"
-              >
-                详情
-              </el-button>
             </template>
           </el-table-column>
         </el-table>
       </div>
     </div>
 
-    <!-- 编辑医生排班的对话框 -->
+    <!-- 保留编辑医生排班的对话框，以便将来可能需要恢复此功能 -->
     <el-dialog
       v-model="dialogVisible"
       title="编辑排班信息"
@@ -480,6 +579,35 @@ const BASE_URL = 'http://38.38.251.86:8000/api';
   gap: 0px;
 }
 
+.month-selector {
+  display: flex;
+  gap: 20px;
+  margin-bottom: 10px;
+  padding: 10px;
+  background-color: rgba(255, 255, 255, 0.5);
+}
+
+.month-item {
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: rgba(255, 255, 255, 0.7);
+  transition: all 0.3s;
+}
+
+.month-item:hover {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+.month-item.is-active {
+  background-color: #9c0c15;
+  color: white;
+}
+
+.dates-container {
+  overflow-x: auto;
+}
+
 .date-nav {
   display: flex;
   flex-direction: row;
@@ -491,7 +619,7 @@ const BASE_URL = 'http://38.38.251.86:8000/api';
 }
 
 .date-item {
-  flex: 1;
+  width: 14.2857%; /* 每个日期项占据一周的1/7 */
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -506,9 +634,19 @@ const BASE_URL = 'http://38.38.251.86:8000/api';
   background-color: rgba(255, 255, 255, 0.5);
 }
 
+/* 有排班日期的样式 - 将红色改为绿色 */
+.has-schedule {
+  background-color: rgba(40, 167, 69, 0.1); /* 改为绿色背景 */
+  border-bottom: 2px solid #28a745; /* 改为绿色边框 */
+}
+
 .is-active {
   background-color: rgba(255, 255, 255, 0.7);
   border: 1px solid #9c0c15;
+}
+
+.is-active.has-schedule {
+  background-color: rgba(40, 167, 69, 0.2); /* 改为更深的绿色背景 */
 }
 
 .is-active p {

@@ -31,10 +31,71 @@ const departments = ref([])
 const loading = ref(false)
 const schedulesByDepartment = ref({}) // 存储每个科室的排班信息
 
-// 根据cycle_day获取日期
-const getDateByCycleDay = (cycleDay) => {
-    return moment().add(cycleDay - 1, 'days');
-};
+// 从科室简介中提取坐诊时间
+const officeHours = computed(() => {
+  if (!currentKeshi.value || !currentKeshi.value.introduction) {
+    return '08:00-17:00';
+  }
+
+  const description = currentKeshi.value.introduction;
+  
+  // 尝试匹配不同格式的时间表示
+  const timePatterns = [
+    // 匹配"坐诊时间：XX:XX-XX:XX"格式
+    /坐诊时间[：:]\s*(\d{1,2}[:：]\d{1,2}\s*[-至~]\s*\d{1,2}[:：]\d{1,2})/i,
+    // 匹配"门诊时间：XX:XX-XX:XX"格式
+    /门诊时间[：:]\s*(\d{1,2}[:：]\d{1,2}\s*[-至~]\s*\d{1,2}[:：]\d{1,2})/i,
+    // 匹配"工作时间：XX:XX-XX:XX"格式
+    /工作时间[：:]\s*(\d{1,2}[:：]\d{1,2}\s*[-至~]\s*\d{1,2}[:：]\d{1,2})/i,
+    // 匹配"接诊时间：XX:XX-XX:XX"格式
+    /接诊时间[：:]\s*(\d{1,2}[:：]\d{1,2}\s*[-至~]\s*\d{1,2}[:：]\d{1,2})/i,
+    // 匹配"上午XX:XX-XX:XX"和"下午XX:XX-XX:XX"格式
+    /(上午\s*\d{1,2}[:：]\d{1,2}\s*[-至~]\s*\d{1,2}[:：]\d{1,2})/i,
+    /(下午\s*\d{1,2}[:：]\d{1,2}\s*[-至~]\s*\d{1,2}[:：]\d{1,2})/i,
+    // 匹配时间段 HH:MM-HH:MM
+    /(\d{1,2}[:：]\d{1,2}\s*[-至~]\s*\d{1,2}[:：]\d{1,2})/i
+  ];
+
+  // 遍历所有模式，查找匹配
+  for (const pattern of timePatterns) {
+    const match = description.match(pattern);
+    if (match && match[1]) {
+      return match[1];
+    }
+  }
+
+  // 如果科室有openHours字段且不为空，则返回该字段的值
+  if (currentKeshi.value.opTime) {
+    return currentKeshi.value.opTime;
+  }
+
+  // 未找到任何坐诊时间信息，返回默认值
+  return '08:00-17:00';
+});
+
+// 处理科室信息，从描述中移除已经提取的坐诊时间
+const processedDescription = computed(() => {
+  if (!currentKeshi.value || !currentKeshi.value.introduction) {
+    return '';
+  }
+  
+  const description = currentKeshi.value.introduction;
+  
+  // 移除提取出的时间信息，避免重复显示
+  const patterns = [
+    /坐诊时间[：:]\s*\d{1,2}[:：]\d{1,2}\s*[-至~]\s*\d{1,2}[:：]\d{1,2}\s*/i,
+    /门诊时间[：:]\s*\d{1,2}[:：]\d{1,2}\s*[-至~]\s*\d{1,2}[:：]\d{1,2}\s*/i,
+    /工作时间[：:]\s*\d{1,2}[:：]\d{1,2}\s*[-至~]\s*\d{1,2}[:：]\d{1,2}\s*/i,
+    /接诊时间[：:]\s*\d{1,2}[:：]\d{1,2}\s*[-至~]\s*\d{1,2}[:：]\d{1,2}\s*/i
+  ];
+
+  let processedDesc = description;
+  for (const pattern of patterns) {
+    processedDesc = processedDesc.replace(pattern, '');
+  }
+
+  return processedDesc.trim();
+});
 
 // 初始化数据
 const initData = async () => {
@@ -59,6 +120,9 @@ const initData = async () => {
             if (!currentKeshiId.value && deptData.length > 0) {
                 currentKeshiId.value = deptData[0].id;
                 await loadDepartmentSchedules(currentKeshiId.value);
+                
+                // 更新当前显示日期为该科室有排班的第一天
+                updateShowDateToFirstSchedule();
             }
         }
         
@@ -68,6 +132,17 @@ const initData = async () => {
         console.error('初始化数据失败:', error);
     }
 };
+
+// 辅助函数：更新显示日期为有排班的第一天
+const updateShowDateToFirstSchedule = () => {
+    for (let i = 0; i < datesFromToday.length; i++) {
+        const date = datesFromToday[i];
+        if (hasScheduleForDate(date)) {
+            showDate.value = date;
+            break;
+        }
+    }
+}
 
 // 加载科室排班
 const loadDepartmentSchedules = async (departmentId) => {
@@ -82,8 +157,10 @@ const loadDepartmentSchedules = async (departmentId) => {
         
         // 映射排班信息到日期
         schedules.forEach(schedule => {
-            const cycleDay = schedule.cycle_day;
-            const scheduleDate = getDateByCycleDay(cycleDay);
+            // 使用排班对象中的日期信息(如果有)，否则根据索引映射
+            const scheduleDate = schedule.date ? 
+                moment(schedule.date) : 
+                moment().add(schedules.indexOf(schedule), 'days');
             const dateKey = scheduleDate.format('MM.DD');
             
             schedulesByDepartment.value[departmentId][dateKey] = schedule;
@@ -133,13 +210,7 @@ async function changeKeshi(keshiId) {
         await loadDepartmentSchedules(keshiId);
         
         // 更新当前显示日期为该科室有排班的第一天
-        for (let i = 0; i < datesFromToday.length; i++) {
-            const date = datesFromToday[i];
-            if (hasScheduleForDate(date)) {
-                showDate.value = date;
-                break;
-            }
-        }
+        updateShowDateToFirstSchedule();
     }
 }
 
@@ -195,14 +266,8 @@ onMounted(async () => {
         currentKeshiId.value = parseInt(route.query.keshi);
         await loadDepartmentSchedules(currentKeshiId.value);
         
-        // 寻找该科室有排班的第一天
-        for (let i = 0; i < datesFromToday.length; i++) {
-            const date = datesFromToday[i];
-            if (hasScheduleForDate(date)) {
-                showDate.value = date;
-                break;
-            }
-        }
+        // 更新当前显示日期为该科室有排班的第一天
+        updateShowDateToFirstSchedule();
     }
 });
 </script>
@@ -255,10 +320,15 @@ onMounted(async () => {
                     出诊医生
                 </h3>
                 <el-scrollbar max-height="calc(100% - 32px)">
-                    <h3>坐诊时间 <text class="bold10">8:00-17:00</text></h3>
+                    <h3>坐诊时间 <text class="bold10">{{ officeHours }}</text></h3>
                     <h3 v-if="currentKeshi.hotline">
                         科室电话 <text class="bold10">{{ currentKeshi.hotline }}</text>
                     </h3>
+                    <!-- 添加科室简介显示 -->
+                    <div v-if="processedDescription" class="keshi-description">
+                        <h3>科室简介</h3>
+                        <p>{{ processedDescription }}</p>
+                    </div>
                     <el-divider />
                     <div v-if="loading">加载中...</div>
                     <div v-else-if="doctorList.length === 0">当前日期没有医生出诊</div>
@@ -375,5 +445,15 @@ onMounted(async () => {
     background-color: #9c0c15;
     color: white;
     font-weight: bold;
+}
+
+.keshi-description {
+    margin: 15px 0;
+}
+
+.keshi-description p {
+    line-height: 1.6;
+    color: #555;
+    margin-top: 8px;
 }
 </style>

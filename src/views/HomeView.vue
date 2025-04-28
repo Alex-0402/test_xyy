@@ -1,14 +1,15 @@
 <script setup>
-import { reactive } from 'vue';
+import { reactive, computed } from 'vue';
 import { RouterLink } from 'vue-router'
 import PageTitle from '../components/PageTitle.vue'
 import UserDropdown from '../components/UserDropdown.vue'
 import { Guide } from '@element-plus/icons-vue'
 import '@/assets/styles/common.css'; // 引入全局样式
+import { isAuthenticated } from '@/utils/auth'; // 导入身份验证函数
 
 const jkfwList = reactive([
   { iconName: "icon-mianxingyishengtubiao3", servName: "校医院概况", url: '/gaikuang' },
-  { iconName: "icon-rili", servName: "校医院排班", url: "/keshi" },
+  { iconName: "icon-rili", servName: "校医院排班", url: "/guahao" },
   { iconName: "icon-baojian", servName: "校医院通知", url: "/tongzhi"},
   { iconName: "icon-a-yibaoyibaoka", servName: "学生医保", url: "/yibao-xs" },
   { iconName: "icon-mianxingshizibiaozhitubiao", servName: "服务指南", url: "/zhinan" },
@@ -22,13 +23,18 @@ const jkfwList = reactive([
 const adminList = reactive([
   { iconName: "icon-mianxingyishengtubiao3", servName: "医生信息管理", url: "/doctor-info" },
   { iconName: "icon-rili", servName: "医生排班管理", url: "/change-keshi" },
-  { iconName: "icon-rili", servName: "科室排班管理", url: "/keshi-schedule" },
+  //{ iconName: "icon-rili", servName: "科室排班管理", url: "/keshi-schedule" },
   { iconName: "icon-mianxingshizibiaozhitubiao", servName: "科室管理", url: "/add-keshi-info" },
   { iconName: "icon-baojian", servName: "校医院通知管理", url: "/tongzhi-manage" },
   { iconName: "icon-baojian", servName: "校医院新闻管理", url: "/xinwen-manage" },
   { iconName: "icon-mianxingshizibiaozhitubiao", servName: "服务指南管理", url: "/zhinan-manage" },
   { iconName: "icon-baojian", servName: "科普文章管理", url: "/kepu-manage" },
 ])
+
+// 添加计算属性检查用户是否已登录
+const isAdmin = computed(() => {
+  return isAuthenticated();
+});
 </script>
 
 <template>
@@ -70,17 +76,22 @@ const adminList = reactive([
     </el-row>
     <div class="header-container">
     </div>
-    <page-title title="管理功能" icon-name="icon-mianxingyiyuantubiao"></page-title>
-    <el-row class="sect_content">
-      <el-col v-for="(item, index) in adminList" :key="index" :span="6">
-        <router-link :to="item.url">
-          <div class="grid-content">
-            <span class="iconfont" :class="item.iconName"></span>
-            <p>{{ item.servName }}</p>
-          </div>
-        </router-link>
-      </el-col>
-    </el-row>
+    
+    <!-- 只有登录用户才能看到管理功能 -->
+    <template v-if="isAdmin">
+      <page-title title="管理功能" icon-name="icon-mianxingyiyuantubiao"></page-title>
+      <el-row class="sect_content">
+        <el-col v-for="(item, index) in adminList" :key="index" :span="6">
+          <router-link :to="item.url">
+            <div class="grid-content">
+              <span class="iconfont" :class="item.iconName"></span>
+              <p>{{ item.servName }}</p>
+            </div>
+          </router-link>
+        </el-col>
+      </el-row>
+    </template>
+
     <!-- <page-title title="管理功能" icon-name="icon-setting"></page-title>
     <el-row class="sect_content">
       <el-col v-for="(item, index) in adminList" :key="index" :span="8">
