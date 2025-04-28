@@ -1,26 +1,51 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { defineStore } from 'pinia';
+import axios from 'axios';
+import { API_BASE_URL } from './api-config';
 
-export const useZhinanStore = defineStore('zhinan', () => {
-  const zhinanArticleList = ref([
-    {
-      id: 1,
-      title: '山东大学青岛校区校医院就医指南',
-      pic: 'https://hq.qd.sdu.edu.cn/__local/5/D6/B9/59E3801503CD08D36569C70A0E3_6DC30017_BC2C.jpg',
-      url: 'https://hq.qd.sdu.edu.cn/info/1014/2036.htm'
-    },
-    {
-      id: 2,
-      title: '校医院处方药品使用指南',
-      pic: 'https://hq.qd.sdu.edu.cn/__local/2/03/E4/B778AD0F877022345E62B48F446_4544DA9B_8E84.jpg',
-      url: 'https://hq.qd.sdu.edu.cn/info/1014/2037.htm'
-    },
-    // 可以添加更多服务指南
-  ])
-
-  const showShare = ref({
-    isShow: 'share' in navigator
-  })
-
-  return { zhinanArticleList, showShare }
-})
+export const useZhinanStore = defineStore('zhinan', {
+  state: () => ({
+    zhinanArticles: [],
+    zhinanArticleList: [], // 保留旧名称以兼容现有视图
+    totalPages: 1,
+    currentPage: 1,
+    error: null,
+    isLoading: false,
+    showShare: { isShow: true }  // 添加showShare以匹配视图
+  }),
+  
+  actions: {
+    async fetchZhinan(page = 1, pageSize = 10) {
+      this.isLoading = true;
+      this.error = null;
+      
+      try {
+        console.log('调用指南API:', `${API_BASE_URL}/articles?type=guide&index=${page}&size=${pageSize}`);
+        const response = await axios.get(`${API_BASE_URL}/articles`, {
+          params: {
+            type: 'guide',
+            index: page,
+            size: pageSize
+          }
+        });
+        
+        console.log('指南API返回数据:', response.data);
+        
+        if (response.data.code === 200 && response.data.data) {
+          // 更新两个数组以兼容视图
+          this.zhinanArticles = response.data.data.article_list || [];
+          this.zhinanArticleList = response.data.data.article_list || []; 
+          this.totalPages = response.data.data.total_pages || 1;
+          this.currentPage = response.data.data.current_page || 1;
+        } else {
+          this.error = response.data.message || '获取服务指南失败';
+          console.error('获取服务指南失败:', response.data);
+        }
+      } catch (error) {
+        this.error = error.message || '网络错误，请稍后再试';
+        console.error('获取服务指南异常:', error);
+      } finally {
+        this.isLoading = false;
+      }
+    }
+  }
+});

@@ -5,6 +5,14 @@ import PageTitle from '../../components/PageTitle.vue';
 import UserDropdown from '../../components/UserDropdown.vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import '@/assets/styles/common.css';
+import {
+  fetchAllDepartments,
+  fetchDepartmentSchedules,
+  updateDepartmentSchedule,
+  bulkUpdateDepartmentSchedules,
+  convertToBackendDates,
+  convertToFrontendWorkDays
+} from '../../api/keshiScheduleApi';
 
 const keshiStore = useKeshiStore();
 const keshiList = ref([]);
@@ -14,13 +22,64 @@ const editingKeshi = ref(null);
 const daysOfWeek = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
 
 // 加载科室数据
-const loadKeshiData = () => {
+const loadKeshiData = async () => {
   loading.value = true;
-  keshiList.value = keshiStore.keshiList.map(keshi => ({
-    ...keshi,
-    workDayOriginal: [...keshi.workDay] // 保存原始值用于检测更改
-  }));
-  loading.value = false;
+  try {
+    // 从后端获取所有科室信息
+    const response = await fetchAllDepartments();
+    if (response.code === 200) {
+      // 将后端数据映射到前端数据格式
+      const departments = response.data;
+      keshiList.value = await Promise.all(departments.map(async (dept) => {
+        let workDay = [0, 0, 0, 0, 0, 0, 0]; // 默认所有天都不排班
+        
+        try {
+          // 获取科室的排班信息
+          const scheduleResponse = await fetchDepartmentSchedules(dept.id);
+          
+          if (scheduleResponse.code === 200 && scheduleResponse.data.length > 0) {
+            // 从默认排班规则中提取工作日信息
+            const schedules = scheduleResponse.data;
+            schedules.forEach(schedule => {
+              if (schedule.department === dept.id && schedule.dates_list) {
+                workDay = convertToFrontendWorkDays(schedule.dates_list);
+              }
+            });
+          }
+        } catch (error) {
+          console.error(`加载科室${dept.id}排班数据出错:`, error);
+        }
+        
+        return {
+          id: dept.id,
+          name: dept.name,
+          opDay: convertWorkDayToText(workDay),
+          workDay: workDay,
+          workDayOriginal: [...workDay],
+          opTime: "8:00-16:00", // 暂时使用默认值
+          hotline: dept.hotline || "", // 如果后端提供了这个字段，则使用；否则使用空字符串
+        };
+      }));
+    } else {
+      ElMessage.error('加载科室数据失败');
+    }
+  } catch (error) {
+    console.error('加载科室数据出错:', error);
+    ElMessage.error('加载科室数据时出现错误');
+  } finally {
+    loading.value = false;
+  }
+};
+
+// 将工作日数组转换为文本描述
+const convertWorkDayToText = (workDay) => {
+  const days = [];
+  workDay.forEach((day, index) => {
+    if (day === 1) {
+      days.push(daysOfWeek[index]);
+    }
+  });
+  return days.length > 0 ? days.join('、') : '无';
 };
 
 // 编辑科室排班
@@ -33,45 +92,127 @@ const editKeshiSchedule = (keshi) => {
 };
 
 // 保存科室排班更改
-const saveKeshiSchedule = () => {
-  const keshiIndex = keshiStore.keshiList.findIndex(k => k.id === editingKeshi.value.id);
-  if (keshiIndex !== -1) {
-    const keshi = keshiStore.keshiList[keshiIndex];
-    // 更新排班信息
-    for (let i = 0; i < 7; i++) {
-      keshi.workDay[i] = editingKeshi.value.workDay[i];
+const saveKeshiSchedule = async () => {
+  try {
+    if (!editingKeshi.value) return;
+    
+    // 获取科室ID和工作日信息
+    const keshiId = editingKeshi.value.id;
+    const workDay = editingKeshi.value.workDay;
+    
+    // 转换为后端格式的日期列表
+    const backendDates = convertToBackendDates(workDay);
+    
+    // 发送更新请求
+    const response = await updateDepartmentSchedule(keshiId, backendDates);
+    
+    if (response.code === 200) {
+      // 更新本地科室数据
+      const keshiIndex = keshiList.value.findIndex(k => k.id === keshiId);
+      if (keshiIndex !== -1) {
+        keshiList.value[keshiIndex].workDay = [...editingKeshi.value.workDay];
+        keshiList.value[keshiIndex].opDay = convertWorkDayToText(editingKeshi.value.workDay);
+        keshiList.value[keshiIndex].opTime = editingKeshi.value.opTime;
+        keshiList.value[keshiIndex].hotline = editingKeshi.value.hotline;
+        keshiList.value[keshiIndex].workDayOriginal = [...editingKeshi.value.workDay];
+      }
+      
+      ElMessage.success(`${editingKeshi.value.name}的排班信息已更新`);
+    } else {
+      ElMessage.error('保存排班信息失败');
     }
-    
-    // 更新工作日文字描述
-    keshiStore.updateKeshiOpDay(keshi);
-    
-    ElMessage.success(`${keshi.name}的排班信息已更新`);
-    loadKeshiData();
+  } catch (error) {
+    console.error('保存排班信息出错:', error);
+    ElMessage.error('保存排班信息时出现错误');
+  } finally {
+    dialogVisible.value = false;
   }
-  
-  dialogVisible.value = false;
 };
 
 // 切换单日排班状态
-const toggleWorkDay = (keshiId, dayIndex, value) => {
-  keshiStore.toggleKeshiWorkDay(keshiId, dayIndex, value);
-  // 重新加载数据以反映更改
-  loadKeshiData();
-  ElMessage.success('排班状态已更新');
+const toggleWorkDay = async (keshiId, dayIndex, value) => {
+  try {
+    const keshi = keshiList.value.find(k => k.id === keshiId);
+    if (!keshi) return;
+    
+    // 更新本地状态
+    keshi.workDay[dayIndex] = value;
+    
+    // 转换为后端格式的日期列表
+    const backendDates = convertToBackendDates(keshi.workDay);
+    
+    // 发送更新请求
+    const response = await updateDepartmentSchedule(keshiId, backendDates);
+    
+    if (response.code === 200) {
+      // 更新本地opDay文本描述
+      keshi.opDay = convertWorkDayToText(keshi.workDay);
+      ElMessage.success('排班状态已更新');
+    } else {
+      // 如果更新失败，回滚本地状态
+      keshi.workDay[dayIndex] = value === 1 ? 0 : 1;
+      ElMessage.error('更新排班状态失败');
+    }
+  } catch (error) {
+    console.error('更新排班状态出错:', error);
+    ElMessage.error('更新排班状态时出现错误');
+    // 回滚本地状态
+    const keshi = keshiList.value.find(k => k.id === keshiId);
+    if (keshi) {
+      keshi.workDay[dayIndex] = value === 1 ? 0 : 1;
+    }
+  }
 };
 
 // 保存所有更改
-const saveAllChanges = () => {
-  ElMessageBox.confirm('确定要保存所有科室排班更改吗？', '提示', {
-    confirmButtonText: '确定',
-    cancelButtonText: '取消',
-    type: 'warning',
-  }).then(() => {
-    ElMessage.success('所有科室排班更改已保存');
-    // 在实际应用中，这里应该调用API将更改保存到后端
-  }).catch(() => {
-    // 取消操作
-  });
+const saveAllChanges = async () => {
+  try {
+    ElMessageBox.confirm('确定要保存所有科室排班更改吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
+    }).then(async () => {
+      // 遍历所有科室，检查是否有更改
+      const changedKeshis = keshiList.value.filter(keshi => {
+        return !keshi.workDay.every((val, idx) => val === keshi.workDayOriginal[idx]);
+      });
+      
+      if (changedKeshis.length === 0) {
+        ElMessage.info('没有发现需要保存的更改');
+        return;
+      }
+      
+      // 构建批量请求数据
+      const departmentSchedules = {};
+      
+      changedKeshis.forEach(keshi => {
+        departmentSchedules[keshi.id] = convertToBackendDates(keshi.workDay);
+      });
+      
+      // 发送批量更新请求
+      const response = await bulkUpdateDepartmentSchedules(departmentSchedules);
+      
+      if (response.code === 200) {
+        // 更新本地数据的原始值
+        changedKeshis.forEach(keshi => {
+          const index = keshiList.value.findIndex(k => k.id === keshi.id);
+          if (index !== -1) {
+            keshiList.value[index].workDayOriginal = [...keshiList.value[index].workDay];
+            keshiList.value[index].opDay = convertWorkDayToText(keshiList.value[index].workDay);
+          }
+        });
+        
+        ElMessage.success('所有科室排班更改已保存');
+      } else {
+        ElMessage.error('保存排班更改失败');
+      }
+    }).catch(() => {
+      // 取消操作
+    });
+  } catch (error) {
+    console.error('保存所有更改出错:', error);
+    ElMessage.error('保存过程中出现错误');
+  }
 };
 
 onMounted(() => {

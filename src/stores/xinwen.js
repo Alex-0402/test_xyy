@@ -1,26 +1,51 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { defineStore } from 'pinia';
+import axios from 'axios';
+import { API_BASE_URL } from './api-config';
 
-export const useXinwenStore = defineStore('xinwen', () => {
-  const xinwenArticleList = ref([
-    {
-      id: 1,
-      title: '校医院举办健康义诊活动',
-      pic: 'https://hq.qd.sdu.edu.cn/__local/6/69/D2/052E593B8AB3BEA9904C2C01F12_BD6D5569_16C58.jpg',
-      url: 'https://hq.qd.sdu.edu.cn/info/1015/1948.htm'
-    },
-    {
-      id: 2,
-      title: '校医院开展疫情防控培训',
-      pic: 'https://hq.qd.sdu.edu.cn/__local/B/25/C8/4D2F2A2A48BCAA18852114ACBD0_37A2422E_E975.jpg',
-      url: 'https://hq.qd.sdu.edu.cn/info/1015/1947.htm'
-    },
-    // 可以添加更多新闻
-  ])
-
-  const showShare = ref({
-    isShow: 'share' in navigator
-  })
-
-  return { xinwenArticleList, showShare }
-})
+export const useXinwenStore = defineStore('xinwen', {
+  state: () => ({
+    xinwenArticles: [],
+    xinwenArticleList: [], // 保留旧名称以兼容现有视图
+    totalPages: 1,
+    currentPage: 1,
+    error: null,
+    isLoading: false,
+    showShare: { isShow: true }  // 添加showShare以匹配视图
+  }),
+  
+  actions: {
+    async fetchXinwen(page = 1, pageSize = 10) {
+      this.isLoading = true;
+      this.error = null;
+      
+      try {
+        console.log('调用新闻API:', `${API_BASE_URL}/articles?type=news&index=${page}&size=${pageSize}`);
+        const response = await axios.get(`${API_BASE_URL}/articles`, {
+          params: {
+            type: 'news',
+            index: page,
+            size: pageSize
+          }
+        });
+        
+        console.log('新闻API返回数据:', response.data);
+        
+        if (response.data.code === 200 && response.data.data) {
+          // 更新两个数组以兼容视图
+          this.xinwenArticles = response.data.data.article_list || [];
+          this.xinwenArticleList = response.data.data.article_list || [];
+          this.totalPages = response.data.data.total_pages || 1;
+          this.currentPage = response.data.data.current_page || 1;
+        } else {
+          this.error = response.data.message || '获取新闻失败';
+          console.error('获取新闻失败:', response.data);
+        }
+      } catch (error) {
+        this.error = error.message || '网络错误，请稍后再试';
+        console.error('获取新闻异常:', error);
+      } finally {
+        this.isLoading = false;
+      }
+    }
+  }
+});

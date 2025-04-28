@@ -1,26 +1,51 @@
-import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { defineStore } from 'pinia';
+import axios from 'axios';
+import { API_BASE_URL } from './api-config';
 
-export const useTongzhiStore = defineStore('tongzhi', () => {
-  const tongzhiArticleList = ref([
-    {
-      id: 1,
-      title: '关于开展校医院义诊服务的通知',
-      pic: 'https://hq.qd.sdu.edu.cn/__local/2/B0/2B/25A64E8BE72CB203D5394481F6F_9913523E_BC2C.jpg',
-      url: 'https://hq.qd.sdu.edu.cn/info/1014/2035.htm'
-    },
-    {
-      id: 2,
-      title: '关于山大青岛校区核酸检测的通知',
-      pic: 'https://hq.qd.sdu.edu.cn/__local/9/C6/D0/85D6EC5553B2A3FDBF472ECDBE4_26FCBC75_5AF0.jpg',
-      url: 'https://hq.qd.sdu.edu.cn/info/1014/2034.htm'
-    },
-    // 可以添加更多通知
-  ])
-
-  const showShare = ref({
-    isShow: 'share' in navigator
-  })
-
-  return { tongzhiArticleList, showShare }
-})
+export const useTongzhiStore = defineStore('tongzhi', {
+  state: () => ({
+    tongzhiArticles: [],
+    tongzhiArticleList: [], // 保留旧名称以兼容现有视图
+    totalPages: 1,
+    currentPage: 1,
+    error: null,
+    isLoading: false,
+    showShare: { isShow: true }  // 添加showShare以匹配视图
+  }),
+  
+  actions: {
+    async fetchTongzhi(page = 1, pageSize = 10) {
+      this.isLoading = true;
+      this.error = null;
+      
+      try {
+        console.log('调用通知API:', `${API_BASE_URL}/articles?type=notice&index=${page}&size=${pageSize}`);
+        const response = await axios.get(`${API_BASE_URL}/articles`, {
+          params: {
+            type: 'notice',
+            index: page,
+            size: pageSize
+          }
+        });
+        
+        console.log('通知API返回数据:', response.data);
+        
+        if (response.data.code === 200 && response.data.data) {
+          // 更新两个数组以兼容视图
+          this.tongzhiArticles = response.data.data.article_list || [];
+          this.tongzhiArticleList = response.data.data.article_list || [];
+          this.totalPages = response.data.data.total_pages || 1;
+          this.currentPage = response.data.data.current_page || 1;
+        } else {
+          this.error = response.data.message || '获取通知失败';
+          console.error('获取通知失败:', response.data);
+        }
+      } catch (error) {
+        this.error = error.message || '网络错误，请稍后再试';
+        console.error('获取通知异常:', error);
+      } finally {
+        this.isLoading = false;
+      }
+    }
+  }
+});
