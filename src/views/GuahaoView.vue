@@ -275,30 +275,41 @@ onMounted(async () => {
 <template>
     <div class="guahao-page-wrapper main-background">
         <page-title title="门诊排班" icon-name="icon-rili"></page-title>
-        <div class="top">
-            <!-- 两周日期分成上下两排显示 -->
-            <ul class="date-nav">
-                <li v-for="(date, index) in firstWeekDates" :key="'week1-' + index" class="date-item"
-                    :class="{ 
-                      'is-active': showDate.format('YYYY-MM-DD') === date.format('YYYY-MM-DD'), 
-                      'no-schedule': !dateHasSchedule[date.format('MM.DD')] 
-                    }" 
-                    @click="changeShowDate(date)">
-                    <p class="date-day">{{ date.format('MM.DD') }}</p>
-                    <p class="date-weekday">{{ weekdaysShort[date.day()] }}</p>
-                </li>
-            </ul>
-            <ul class="date-nav">
-                <li v-for="(date, index) in secondWeekDates" :key="'week2-' + index" class="date-item"
-                    :class="{ 
-                      'is-active': showDate.format('YYYY-MM-DD') === date.format('YYYY-MM-DD'), 
-                      'no-schedule': !dateHasSchedule[date.format('MM.DD')] 
-                    }" 
-                    @click="changeShowDate(date)">
-                    <p class="date-day">{{ date.format('MM.DD') }}</p>
-                    <p class="date-weekday">{{ weekdaysShort[date.day()] }}</p>
-                </li>
-            </ul>
+        
+        <!-- 修改为顶部一行显示星期几，下面两行显示日期数字 -->
+        <div class="date-container">
+            <!-- 顶部行 - 只显示周几 -->
+            <div class="weekday-row">
+                <div v-for="(date, index) in datesFromToday.slice(0, 7)" :key="'weekday-' + index" class="weekday-item">
+                    {{ index === 0 ? '今日' : weekdaysShort[date.day()] }}
+                </div>
+            </div>
+            
+            <!-- 第一周日期 - 只显示日期数字 -->
+            <div class="date-grid">
+                <div v-for="(date, index) in firstWeekDates" :key="'date-week1-' + index" 
+                     class="date-item"
+                     :class="{ 
+                       'is-active': showDate.format('YYYY-MM-DD') === date.format('YYYY-MM-DD'), 
+                       'no-schedule': !dateHasSchedule[date.format('MM.DD')] 
+                     }" 
+                     @click="changeShowDate(date)">
+                    <div class="date-number">{{ date.format('DD') }}</div>
+                </div>
+            </div>
+            
+            <!-- 第二周日期 - 只显示日期数字 -->
+            <div class="date-grid">
+                <div v-for="(date, index) in secondWeekDates" :key="'date-week2-' + index" 
+                     class="date-item"
+                     :class="{ 
+                       'is-active': showDate.format('YYYY-MM-DD') === date.format('YYYY-MM-DD'), 
+                       'no-schedule': !dateHasSchedule[date.format('MM.DD')] 
+                     }" 
+                     @click="changeShowDate(date)">
+                    <div class="date-number">{{ date.format('DD') }}</div>
+                </div>
+            </div>
         </div>
 
         <div class="main">
@@ -353,61 +364,128 @@ onMounted(async () => {
     overflow-x: hidden;
 }
 
-.top {
-    padding: 8px 0;
+/* 更新日期导航样式 */
+.date-container {
+    padding: 8px 10px;
+    background-color: rgba(255, 255, 255, 0.7);
+    margin: 8px 0;
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 6px;
 }
 
-.date-nav {
-    display: flex;
-    flex-direction: row;
-    background-color: rgba(255, 255, 255, 0.3);
-    height: 60px;
-    list-style: none;
-    margin: 0;
-    padding: 0;
+/* 顶部星期几行样式 */
+.weekday-row {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    width: 100%;
+    padding-bottom: 2px;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.weekday-item {
+    text-align: center;
+    font-size: 16px;
+    font-weight: 500;
+    color: #333;
+    padding: 4px 0;
+}
+
+.date-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 8px;
+    width: 100%;
 }
 
 .date-item {
-    flex: 1;
     display: flex;
-    flex-direction: column;
-    align-items: center;
     justify-content: center;
-    text-align: center;
-    border: 1px solid rgba(146, 222, 236, 0.493);
-    color: #333;
+    padding: 8px 4px;
     cursor: pointer;
-    padding: 4px 2px;
+    position: relative;
+    transition: all 0.3s ease;
+    text-align: center;
+    box-sizing: border-box;
+    border: 2px solid transparent;
+    border-radius: 4px; /* 给所有日期添加相同圆角，防止选中时形状变化 */
 }
 
-.date-day {
-    font-size: 0.9rem;
-    margin: 0;
-    line-height: 1.4;
+.date-number {
+    font-size: 24px;
+    font-weight: 500;
+    color: #333;
 }
 
-.date-weekday {
-    font-size: 0.8rem;
-    margin: 0;
-    line-height: 1.4;
-}
-
-.is-active p {
-    color: #9c0c15;
-    font-weight: 600;
-}
-
-.no-schedule {
-    background-color: rgba(200, 200, 200, 0.5);
-    color: #999;
+.date-item.no-schedule {
+    opacity: 0.5;
     cursor: not-allowed;
 }
 
-.no-schedule p {
+.date-item.no-schedule .date-number {
     color: #999;
+}
+
+/* 修改为使用红色背景填充并将日期文字变为白色 */
+.date-item.is-active {
+    border: none;
+    background-color: #9c0c15;
+}
+
+.date-item.is-active .date-number {
+    font-weight: bold;
+    color: white;
+}
+
+/* 在小屏幕上调整网格布局 */
+@media screen and (max-width: 768px) {
+    .weekday-item {
+        font-size: 14px;
+    }
+    
+    .date-grid {
+        gap: 4px;
+    }
+    
+    .date-item {
+        padding: 6px 2px;
+        border-width: 1.5px;
+    }
+    
+    .date-number {
+        font-size: 20px;
+    }
+    
+    .date-item.is-active {
+        border-width: 1.5px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .date-container {
+        padding: 6px 5px;
+        margin: 5px 0;
+        gap: 4px;
+    }
+    
+    .weekday-item {
+        font-size: 12px;
+        padding: 2px 0;
+    }
+    
+    .date-number {
+        font-size: 18px;
+    }
+    
+    .date-item {
+        padding: 4px 2px;
+        border-width: 1px;
+    }
+    
+    .date-item.is-active {
+        border-width: 1px;
+    }
 }
 
 .main {
