@@ -461,14 +461,16 @@ const dateHasSchedule = computed(() => {
     <div class="main">
       <div class="keshi-section">
         <h3 class="section-title">选择科室</h3>
-        <ul class="keshi-list">
-          <li v-for="keshi in keshiList" :key="keshi.id" 
-              class="keshi-item"
-              :class="{ 'is-active': activeKeshi && activeKeshi.id === keshi.id }"
-              @click="changeKeshi(keshi)">
-            {{ keshi.name }}
-          </li>
-        </ul>
+        <div class="keshi-list-container">
+          <ul class="keshi-list">
+            <li v-for="keshi in keshiList" :key="keshi.id" 
+                class="keshi-item"
+                :class="{ 'is-active': activeKeshi && activeKeshi.id === keshi.id }"
+                @click="changeKeshi(keshi)">
+              {{ keshi.name }}
+            </li>
+          </ul>
+        </div>
       </div>
 
       <div class="schedule-section">
@@ -659,6 +661,7 @@ const dateHasSchedule = computed(() => {
   gap: 20px;
   margin-top: 20px;
   padding: 0 20px;
+  flex-direction: row; /* 默认水平布局 */
 }
 
 .keshi-section {
@@ -666,36 +669,36 @@ const dateHasSchedule = computed(() => {
   background-color: rgba(255, 255, 255, 0.7);
   padding: 15px;
   border-radius: 4px;
+  max-height: 600px; /* 限制高度，避免在小屏幕上占用太多空间 */
+  transition: all 0.3s ease; /* 平滑过渡效果 */
 }
 
-.schedule-section {
-  flex: 1;
-  background-color: rgba(255, 255, 255, 0.7);
-  padding: 15px;
-  border-radius: 4px;
-}
-
-.section-title {
-  margin-top: 0;
-  margin-bottom: 15px;
-  font-size: 18px;
-  color: #333;
-  font-weight: bold;
+.keshi-list-container {
+  overflow-y: auto;
+  max-height: 500px; /* 允许列表滚动 */
 }
 
 .keshi-list {
   list-style: none;
   padding: 0;
   margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px; /* 增加项目间距 */
 }
 
 .keshi-item {
-  padding: 10px;
-  margin-bottom: 5px;
-  background-color: rgba(255, 255, 255, 0.5);
-  border-radius: 4px;
+  padding: 12px; /* 增大内边距，便于触摸 */
   cursor: pointer;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.5);
   transition: all 0.3s;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  min-height: 24px; /* 确保最小高度适合触摸 */
 }
 
 .keshi-item:hover {
@@ -707,43 +710,63 @@ const dateHasSchedule = computed(() => {
   color: white;
 }
 
-.schedule-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 15px;
-}
-
-/* 医生详情样式 */
-.doctor-detail {
-  padding: 10px;
-}
-
-.doctor-info {
-  display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
-}
-
-.doctor-text {
+.schedule-section {
   flex: 1;
+  background-color: rgba(255, 255, 255, 0.7);
+  padding: 15px;
+  border-radius: 4px;
+  min-width: 0; /* 防止在flex布局中溢出 */
+  overflow: hidden;
 }
 
-.doctor-text h3 {
-  margin-top: 0;
-  margin-bottom: 10px;
+/* 媒体查询 - 移动设备适配 */
+@media screen and (max-width: 768px) {
+  .main {
+    flex-direction: column; /* 在小屏幕上改为垂直布局 */
+    padding: 0 10px;
+    gap: 10px;
+  }
+  
+  .keshi-section {
+    width: 100%; /* 全宽 */
+    max-height: none;
+    padding: 10px;
+  }
+  
+  .keshi-list-container {
+    max-height: 200px; /* 在移动设备上减少高度 */
+  }
+  
+  .keshi-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 8px;
+  }
+  
+  .keshi-item {
+    padding: 10px 5px;
+    font-size: 14px;
+  }
+
+  .schedule-section {
+    padding: 10px;
+  }
+  
+  /* 调整表格在移动设备上的显示 */
+  :deep(.el-table) {
+    width: 100% !important;
+  }
 }
 
-.doctor-text p {
-  margin: 0;
-  color: #666;
-}
-
-.schedule-info {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 10px 0;
-  border-top: 1px solid #eee;
+/* 小型手机屏幕适配 */
+@media screen and (max-width: 480px) {
+  .keshi-list {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  }
+  
+  .keshi-item {
+    padding: 8px 4px;
+    font-size: 13px;
+  }
 }
 </style>

@@ -284,8 +284,8 @@ onMounted(async () => {
                       'no-schedule': !dateHasSchedule[date.format('MM.DD')] 
                     }" 
                     @click="changeShowDate(date)">
-                    <p>{{ date.format('MM.DD') }}</p>
-                    <p>{{ weekdaysShort[date.day()] }}</p>
+                    <p class="date-day">{{ date.format('MM.DD') }}</p>
+                    <p class="date-weekday">{{ weekdaysShort[date.day()] }}</p>
                 </li>
             </ul>
             <ul class="date-nav">
@@ -295,15 +295,15 @@ onMounted(async () => {
                       'no-schedule': !dateHasSchedule[date.format('MM.DD')] 
                     }" 
                     @click="changeShowDate(date)">
-                    <p>{{ date.format('MM.DD') }}</p>
-                    <p>{{ weekdaysShort[date.day()] }}</p>
+                    <p class="date-day">{{ date.format('MM.DD') }}</p>
+                    <p class="date-weekday">{{ weekdaysShort[date.day()] }}</p>
                 </li>
             </ul>
         </div>
 
         <div class="main">
-            <!-- 使用科室导航组件，并添加科室切换事件 -->
-            <div class="keshi-nav-container">
+            <!-- 仅当科室数量大于1时显示科室导航栏 -->
+            <div class="keshi-nav-container" v-if="keshiList.length > 1">
                 <ul class="keshi-list">
                     <li v-for="keshi in keshiList" :key="keshi.id"
                         :class="{ 'active': currentKeshiId === keshi.id }"
@@ -319,21 +319,25 @@ onMounted(async () => {
                     {{ showDate.format('MM月DD日') }}
                     出诊医生
                 </h3>
-                <el-scrollbar max-height="calc(100% - 32px)">
-                    <h3>坐诊时间 <text class="bold10">{{ officeHours }}</text></h3>
-                    <h3 v-if="currentKeshi.hotline">
-                        科室电话 <text class="bold10">{{ currentKeshi.hotline }}</text>
-                    </h3>
-                    <!-- 添加科室简介显示 -->
-                    <div v-if="processedDescription" class="keshi-description">
-                        <h3>科室简介</h3>
-                        <p>{{ processedDescription }}</p>
+                <el-scrollbar max-height="calc(100% - 32px)" class="custom-scrollbar">
+                    <div class="keshi-info-section">
+                        <h3 class="info-title">坐诊时间 <text class="bold10">{{ officeHours }}</text></h3>
+                        <h3 class="info-title" v-if="currentKeshi.hotline">
+                            科室电话 <text class="bold10">{{ currentKeshi.hotline }}</text>
+                        </h3>
+                        <!-- 添加科室简介显示 -->
+                        <div v-if="processedDescription" class="keshi-description">
+                            <h3 class="info-title">科室简介</h3>
+                            <p>{{ processedDescription }}</p>
+                        </div>
                     </div>
-                    <el-divider />
-                    <div v-if="loading">加载中...</div>
-                    <div v-else-if="doctorList.length === 0">当前日期没有医生出诊</div>
-                    <div v-else v-for="(doctor, index) in doctorList" :key="doctor.id">
-                        <doctor-card :name="doctor.name" :title="doctor.title" :goodat="doctor.goodat" :pic="doctor.pic" :web="doctor.web"></doctor-card>
+                    <el-divider class="custom-divider" />
+                    <div v-if="loading" class="loading-indicator">加载中...</div>
+                    <div v-else-if="doctorList.length === 0" class="no-doctor-message">当前日期没有医生出诊</div>
+                    <div v-else class="doctor-list">
+                        <div v-for="(doctor, index) in doctorList" :key="doctor.id" class="doctor-item">
+                            <doctor-card :name="doctor.name" :title="doctor.title" :goodat="doctor.goodat" :pic="doctor.pic" :web="doctor.web"></doctor-card>
+                        </div>
                     </div>
                 </el-scrollbar>
             </div>
@@ -346,20 +350,21 @@ onMounted(async () => {
     min-height: 100vh;
     display: flex;
     flex-direction: column;
+    overflow-x: hidden;
 }
 
 .top {
-    padding: 10px 0;
+    padding: 8px 0;
     display: flex;
-    flex-direction: column; /* 上下排列两排日期 */
-    gap: 0px; /* 两排之间的间距 */
+    flex-direction: column;
+    gap: 2px;
 }
 
 .date-nav {
     display: flex;
     flex-direction: row;
     background-color: rgba(255, 255, 255, 0.3);
-    height: 70px;
+    height: 60px;
     list-style: none;
     margin: 0;
     padding: 0;
@@ -371,10 +376,23 @@ onMounted(async () => {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    text-align: justify;
+    text-align: center;
     border: 1px solid rgba(146, 222, 236, 0.493);
     color: #333;
     cursor: pointer;
+    padding: 4px 2px;
+}
+
+.date-day {
+    font-size: 0.9rem;
+    margin: 0;
+    line-height: 1.4;
+}
+
+.date-weekday {
+    font-size: 0.8rem;
+    margin: 0;
+    line-height: 1.4;
 }
 
 .is-active p {
@@ -393,33 +411,44 @@ onMounted(async () => {
 }
 
 .main {
-    height: calc(100% - 140px);
+    flex: 1;
     display: flex;
+    overflow: hidden;
 }
 
 .keshi-detail {
     flex: 1;
     background-color: rgba(255, 255, 255, 0.7);
-    padding: 10px 20px;
+    padding: 10px 15px;
     color: #333;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+}
+
+.sec-title {
+    padding-bottom: 8px;
+    font-weight: 700;
+    font-size: 18px;
+    margin: 0 0 8px 0;
+}
+
+.info-title {
+    font-size: 16px;
+    margin: 8px 0;
 }
 
 .bold10 {
     font-weight: 700;
-    padding-left: 10px;
-}
-
-.sec-title {
-    padding-bottom: 10px;
-    font-weight: 700;
-    font-size: 20px;
+    padding-left: 8px;
 }
 
 .keshi-nav-container {
-    width: 200px;
-    padding: 10px;
+    width: 120px;
+    padding: 10px 5px;
     background-color: rgba(255, 255, 255, 0.7);
-    margin-right: 20px;
+    margin-right: 10px;
+    overflow-y: auto;
 }
 
 .keshi-list {
@@ -429,12 +458,15 @@ onMounted(async () => {
 }
 
 .keshi-list li {
-    padding: 10px;
+    padding: 10px 8px;
     margin-bottom: 5px;
     cursor: pointer;
     border-radius: 4px;
     background-color: rgba(255, 255, 255, 0.5);
     transition: all 0.3s;
+    font-size: 14px;
+    text-align: center;
+    word-break: break-all;
 }
 
 .keshi-list li:hover {
@@ -448,12 +480,273 @@ onMounted(async () => {
 }
 
 .keshi-description {
-    margin: 15px 0;
+    margin: 12px 0;
 }
 
 .keshi-description p {
-    line-height: 1.6;
+    line-height: 1.5;
     color: #555;
-    margin-top: 8px;
+    margin-top: 6px;
+    font-size: 14px;
+}
+
+.keshi-info-section {
+    padding: 0 5px;
+}
+
+.custom-divider {
+    margin: 12px 0;
+}
+
+.loading-indicator, .no-doctor-message {
+    text-align: center;
+    padding: 20px;
+    color: #666;
+    font-size: 15px;
+}
+
+.doctor-list {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.custom-scrollbar {
+    overflow-x: hidden;
+}
+
+/* 移动端适配 */
+@media screen and (max-width: 768px) {
+    .date-nav {
+        height: 50px;
+    }
+    
+    .date-day {
+        font-size: 0.8rem;
+    }
+    
+    .date-weekday {
+        font-size: 0.7rem;
+    }
+    
+    .keshi-nav-container {
+        width: 90px;
+        padding: 8px 4px;
+    }
+    
+    .keshi-list li {
+        padding: 8px 4px;
+        font-size: 12px;
+    }
+    
+    .sec-title {
+        font-size: 16px;
+    }
+    
+    .info-title {
+        font-size: 14px;
+    }
+    
+    .keshi-description p {
+        font-size: 13px;
+    }
+    
+    .keshi-detail {
+        padding: 8px 10px;
+    }
+    
+    /* 医生资料卡适配 */
+    .doctor-list {
+        gap: 10px; /* 减小间距 */
+        padding: 0 2px; /* 减小内边距 */
+    }
+    
+    :deep(.doctor-card) {
+        padding: 10px 8px; /* 减小内边距 */
+        border-radius: 5px; /* 减小圆角 */
+    }
+    
+    :deep(.doctor-avatar) {
+        width: 60px; /* 减小头像尺寸 */
+        height: 60px; /* 减小头像尺寸 */
+        margin-right: 10px; /* 减小右边距 */
+    }
+    
+    :deep(.doctor-info h3) {
+        font-size: 15px; /* 减小字体 */
+        margin-bottom: 4px; /* 减小下边距 */
+    }
+    
+    :deep(.doctor-info p) {
+        font-size: 12px; /* 减小字体 */
+        margin-bottom: 3px; /* 减小下边距 */
+    }
+    
+    :deep(.doctor-goodat) {
+        font-size: 12px; /* 减小字体 */
+        line-height: 1.35; /* 调整行高 */
+        max-height: 70px; /* 减小最大高度 */
+    }
+}
+
+/* 小屏幕手机适配 */
+@media screen and (max-width: 480px) {
+    .keshi-nav-container {
+        width: 75px;
+        margin-right: 5px;
+    }
+    
+    .keshi-list li {
+        padding: 7px 3px;
+        font-size: 11px;
+        margin-bottom: 4px;
+    }
+    
+    .date-nav {
+        height: 42px;
+    }
+    
+    .date-day {
+        font-size: 0.7rem;
+    }
+    
+    .date-weekday {
+        font-size: 0.6rem;
+    }
+    
+    .sec-title {
+        font-size: 15px;
+        margin-bottom: 6px;
+    }
+    
+    .keshi-detail {
+        padding: 6px 8px;
+    }
+    
+    .bold10 {
+        padding-left: 5px;
+    }
+    
+    .info-title {
+        font-size: 13px;
+        margin: 5px 0;
+    }
+    
+    .keshi-description p {
+        font-size: 12px;
+        line-height: 1.4;
+    }
+    
+    .custom-divider {
+        margin: 8px 0;
+    }
+    
+    .loading-indicator, .no-doctor-message {
+        padding: 15px;
+        font-size: 13px;
+    }
+    
+    /* 小屏幕医生资料卡适配 */
+    .doctor-list {
+        gap: 8px; /* 进一步减小间距 */
+    }
+    
+    .doctor-item {
+        margin-bottom: 1px; /* 调整 */
+    }
+    
+    :deep(.doctor-card) {
+        padding: 6px 5px; /* 进一步减小内边距 */
+        border-radius: 4px; /* 进一步减小圆角 */
+    }
+    
+    :deep(.doctor-avatar) {
+        width: 45px; /* 进一步减小头像尺寸 */
+        height: 45px; /* 进一步减小头像尺寸 */
+        margin-right: 6px; /* 进一步减小右边距 */
+    }
+    
+    :deep(.doctor-info h3) {
+        font-size: 13px; /* 进一步减小字体 */
+        margin-bottom: 3px; /* 进一步减小下边距 */
+    }
+    
+    :deep(.doctor-info p) {
+        font-size: 11px; /* 进一步减小字体 */
+        margin-bottom: 2px; /* 进一步减小下边距 */
+    }
+    
+    :deep(.doctor-goodat) {
+        font-size: 10px; /* 进一步减小字体 */
+        line-height: 1.25; /* 调整行高 */
+        max-height: 55px; /* 进一步减小最大高度 */
+    }
+    
+    :deep(.operation-buttons) {
+        margin-top: 4px; /* 减小上边距 */
+    }
+    
+    :deep(.operation-buttons button) {
+        font-size: 11px; /* 减小字体 */
+        padding: 3px 6px; /* 减小内边距 */
+    }
+}
+
+/* 超小屏幕手机适配 (如iPhone SE等) */
+@media screen and (max-width: 375px) {
+    .keshi-nav-container {
+        width: 65px;
+        margin-right: 3px;
+    }
+    
+    .keshi-list li {
+        padding: 6px 2px;
+        font-size: 10px;
+    }
+    
+    .date-nav {
+        height: 38px;
+        flex-wrap: wrap;
+    }
+    
+    .date-day {
+        font-size: 0.65rem;
+    }
+    
+    .date-weekday {
+        font-size: 0.55rem;
+    }
+    
+    .sec-title {
+        font-size: 14px;
+    }
+    
+    .keshi-detail {
+        padding: 5px 6px;
+    }
+    
+    :deep(.doctor-avatar) {
+        width: 40px; /* 再次减小头像尺寸 */
+        height: 40px; /* 再次减小头像尺寸 */
+        margin-right: 5px; /* 再次减小右边距 */
+    }
+    
+    :deep(.doctor-info h3) {
+        font-size: 12px; /* 再次减小字体 */
+    }
+    
+    :deep(.doctor-info p) {
+        font-size: 10px; /* 再次减小字体 */
+    }
+    
+    :deep(.doctor-goodat) {
+        font-size: 9px; /* 再次减小字体 */
+        max-height: 45px; /* 再次减小最大高度 */
+        line-height: 1.2; /* 调整行高 */
+    }
+
+    .date-item {
+        margin: 1px 0;
+    }
 }
 </style>

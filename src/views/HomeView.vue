@@ -9,7 +9,7 @@ import { isAuthenticated } from '@/utils/auth'; // 导入身份验证函数
 
 const jkfwList = reactive([
   { iconName: "icon-mianxingyishengtubiao3", servName: "校医院概况", url: '/gaikuang' },
-  { iconName: "icon-rili", servName: "校医院排班", url: "/guahao" },
+  { iconName: "icon-rili", servName: "校医院排班", url: "/keshi" },
   { iconName: "icon-baojian", servName: "校医院通知", url: "/tongzhi"},
   { iconName: "icon-a-yibaoyibaoka", servName: "学生医保", url: "/yibao-xs" },
   { iconName: "icon-mianxingshizibiaozhitubiao", servName: "服务指南", url: "/zhinan" },

@@ -1,5 +1,5 @@
 <script setup>
-import { ref, reactive } from 'vue';
+import { ref, reactive, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { loginUser } from '../../utils/auth';
@@ -14,6 +14,38 @@ const loginForm = reactive({
 
 const loading = ref(false);
 const passwordVisible = ref(false); // 控制密码显示状态
+
+// 保存登录信息到本地存储
+const saveLoginInfo = () => {
+  if (loginForm.remember) {
+    // 如果用户勾选了"记住我"，则保存登录信息
+    const loginInfo = {
+      username: loginForm.username,
+      password: btoa(loginForm.password) // 使用简单的 Base64 编码密码，生产环境建议使用更安全的方式
+    };
+    localStorage.setItem('rememberedLogin', JSON.stringify(loginInfo));
+  } else {
+    // 如果用户未勾选"记住我"，则清除之前保存的登录信息
+    localStorage.removeItem('rememberedLogin');
+  }
+};
+
+// 加载保存的登录信息
+const loadSavedLoginInfo = () => {
+  const savedInfo = localStorage.getItem('rememberedLogin');
+  if (savedInfo) {
+    try {
+      const loginInfo = JSON.parse(savedInfo);
+      loginForm.username = loginInfo.username || '';
+      loginForm.password = loginInfo.password ? atob(loginInfo.password) : ''; // 解码密码
+      loginForm.remember = true;
+    } catch (e) {
+      console.error('Failed to parse saved login info:', e);
+      // 如果解析出错，清除可能已损坏的数据
+      localStorage.removeItem('rememberedLogin');
+    }
+  }
+};
 
 // 登录操作
 const handleLogin = async () => {
@@ -34,6 +66,10 @@ const handleLogin = async () => {
     if (response.code === 999) {
       // 保存用户名，用于后续使用
       localStorage.setItem('current_username', loginForm.username);
+      
+      // 保存登录信息（如果选择了"记住我"）
+      saveLoginInfo();
+      
       ElMessage.success('登录成功');
 
       console.log('登录成功', response);
@@ -50,6 +86,11 @@ const handleLogin = async () => {
     loading.value = false;
   }
 };
+
+// 在页面加载时尝试加载保存的登录信息
+onMounted(() => {
+  loadSavedLoginInfo();
+});
 
 // 跳转到忘记密码页面
 const goToForgotPassword = () => {
