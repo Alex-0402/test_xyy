@@ -12,7 +12,7 @@
 </template>
 
 <script setup>
-import defaultAvatar from '@/assets/images/default_avatar.png'
+import defaultAvatar from '@/assets/default_avatar.png'
 defineProps({
   name: String,
   title: String,
