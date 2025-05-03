@@ -19,8 +19,8 @@ export const useTongzhiStore = defineStore('tongzhi', {
       this.error = null;
       
       try {
-        console.log('调用通知API:', `${API_BASE_URL}/articles?type=notice&index=${page}&size=${pageSize}`);
-        const response = await axios.get(`${API_BASE_URL}/articles`, {
+        console.log('调用通知API:', `${API_BASE_URL}/articles?type=notice&index=${page}&size=${pageSize}/`);
+        const response = await axios.get(`${API_BASE_URL}/articles/`, {
           params: {
             type: 'notice',
             index: page,
@@ -54,10 +54,11 @@ export const useTongzhiStore = defineStore('tongzhi', {
       // 同步更新到后端
       updatedArticles.forEach(async (article) => {
         try {
-          await axios.put(`${API_BASE_URL}/articles/${article.id}`, {
+          await axios.put(`${API_BASE_URL}/articles/${article.id}/`, {
             title: article.title,
-            content: article.content,
-            pic: article.pic,
+            url: article.url,
+            pic: article.pic, // 更新封面图片字段
+            article_type: 'notice',
             is_pinned: article.is_pinned || false,
           }, {
             headers: {

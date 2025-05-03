@@ -19,8 +19,8 @@ export const useXinwenStore = defineStore('xinwen', {
       this.error = null;
       
       try {
-        console.log('调用新闻API:', `${API_BASE_URL}/articles?type=news&index=${page}&size=${pageSize}`);
-        const response = await axios.get(`${API_BASE_URL}/articles`, {
+        console.log('调用新闻API:', `${API_BASE_URL}/articles?type=news&index=${page}&size=${pageSize}/`);
+        const response = await axios.get(`${API_BASE_URL}/articles/`, {
           params: {
             type: 'news',
             index: page,
@@ -54,14 +54,15 @@ export const useXinwenStore = defineStore('xinwen', {
       // 同步更新到后端
       updatedArticles.forEach(async (article) => {
         try {
-          await axios.put(`${API_BASE_URL}/articles/${article.id}`, {
+          await axios.put(`${API_BASE_URL}/articles/${article.id}/`, {
+            article_type: 'news',
             title: article.title,
-            content: article.content,
-            pic: article.pic,
+            url: article.url,
+            pic: article.pic, // 添加封面图片字段
             is_pinned: article.is_pinned || false,
           }, {
             headers: {
-              'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+              'Authorization': `Bearer ${localStorage.getItem('access_token')}/`,
               'Content-Type': 'application/json',
             },
           });
