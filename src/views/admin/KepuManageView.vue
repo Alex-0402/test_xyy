@@ -2,14 +2,25 @@
 import PageTitle from '../../components/PageTitle.vue';
 import { useKepuStore } from '../../stores/kepu';
 import { ref, onMounted } from 'vue';
+import { API_BASE_URL } from '../../stores/api-config';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import axios from 'axios';
 
 const kepuStore = useKepuStore();
 const articles = ref([]);
 
+const getToken = () => {
+  return localStorage.getItem('access_token');
+};
+
 // 在组件挂载时获取文章列表
-onMounted(() => {
-  articles.value = [...kepuStore.kepuArticleList];
+onMounted(async () => {
+  try {
+    await kepuStore.fetchKepu();
+    articles.value = [...kepuStore.kepuArticleList];
+  } catch (error) {
+    console.error('加载科普文章失败:', error);
+  }
 });
 
 // 表单数据
@@ -38,33 +49,33 @@ const handleEdit = (index) => {
   editingIndex.value = index;
   isEditing.value = true;
   form.value = { ...articles.value[index] };
+  form.value.url = articles.value[index].url || ''; // 确保 url 字段存在
   dialogVisible.value = true;
 };
 
-// 处理删除
-const handleDelete = (index) => {
-  ElMessageBox.confirm(
-    `确定要删除文章"${articles.value[index].title}"吗？`,
-    '警告',
-    {
-      confirmButtonText: '确定',
-      cancelButtonText: '取消',
-      type: 'warning',
-    }
-  ).then(() => {
+const handleDelete = async (index) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要删除文章"${articles.value[index].title}"吗？`,
+      '警告',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    );
+    await axios.delete(`${API_BASE_URL}/articles/${articles.value[index].id}/`, {
+      headers: {
+        'Authorization': `Bearer ${getToken()}`,
+      }
+    });
     articles.value.splice(index, 1);
-    ElMessage({
-      type: 'success',
-      message: '删除成功',
-    });
-    // 更新存储中的文章列表
+    ElMessage.success('删除成功');
     kepuStore.updateKepuArticles(articles.value);
-  }).catch(() => {
-    ElMessage({
-      type: 'info',
-      message: '已取消删除',
-    });
-  });
+  } catch (error) {
+    ElMessage.error('删除失败，请检查权限或稍后再试');
+    console.error('删除文章失败:', error);
+  }
 };
 
 // 处理添加
@@ -74,27 +85,48 @@ const handleAdd = () => {
   dialogVisible.value = true;
 };
 
-// 提交表单
-const submitForm = () => {
-  // 简单验证
-  if (!form.value.title || !form.value.pic || !form.value.url) {
-    ElMessage.error('所有字段都是必填的');
-    return;
-  }
+const submitForm = async () => {
+  form.value.title = form.value.title || ''; // 如果为空则置为空字符串
+  form.value.pic = form.value.pic || ''; // 如果为空则置为空字符串
+  form.value.url = form.value.url || ''; // 如果为空则置为空字符串
 
-  if (isEditing.value) {
-    // 编辑现有文章
-    articles.value[editingIndex.value] = { ...form.value };
-    ElMessage.success('文章已更新');
-  } else {
-    // 添加新文章
-    articles.value.push({ ...form.value });
-    ElMessage.success('文章已添加');
-  }
+  try {
+    if (isEditing.value) {
+      await axios.put(`${API_BASE_URL}/articles/${form.value.id}/`, {
+        title: form.value.title,
+        url: form.value.url,
+        pic: form.value.pic,
+        is_pinned: false,
+        article_type: 'science',
+      }, {
+        headers: {
+          'Authorization': `Bearer ${getToken()}`,
+        }
+      });
+      articles.value[editingIndex.value] = { ...form.value };
+      ElMessage.success('文章已更新');
+    } else {
+      const response = await axios.post(`${API_BASE_URL}/articles/`, {
+        article_type: 'science',
+        title: form.value.title,
+        url: form.value.url,
+        pic: form.value.pic,
+        is_pinned: false,
+      }, {
+        headers: {
+          'Authorization': `Bearer ${getToken()}`,
+        }
+      });
+      articles.value.push({ ...form.value, id: response.data.data.id });
+      ElMessage.success('文章已添加');
+    }
 
-  // 更新存储中的文章列表
-  kepuStore.updateKepuArticles(articles.value);
-  dialogVisible.value = false;
+    kepuStore.updateKepuArticles(articles.value);
+    dialogVisible.value = false;
+  } catch (error) {
+    ElMessage.error('操作失败，请检查权限或稍后再试');
+    console.error('提交表单失败:', error);
+  }
 };
 </script>
 

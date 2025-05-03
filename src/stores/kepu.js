@@ -46,6 +46,30 @@ export const useKepuStore = defineStore('kepu', {
       } finally {
         this.isLoading = false;
       }
+    },
+    updateKepuArticles(updatedArticles) {
+      this.kepuArticles = updatedArticles;
+      this.kepuArticleList = updatedArticles; // 保持与视图兼容
+
+      // 同步更新到后端
+      updatedArticles.forEach(async (article) => {
+        try {
+          await axios.put(`${API_BASE_URL}/articles/${article.id}/`, {
+            title: article.title,
+            content: article.url, // 科普文章的内容存储在 url 字段
+            pic: article.pic,
+            is_pinned: article.is_pinned || false,
+            article_type: 'science',
+          }, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+              'Content-Type': 'application/json',
+            },
+          });
+        } catch (error) {
+          console.error(`更新文章 ${article.id} 失败:`, error);
+        }
+      });
     }
   }
 });

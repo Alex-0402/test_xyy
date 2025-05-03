@@ -30,7 +30,7 @@ onMounted(async () => {
 });
 
 function openLink(url) {
-  window.open(`http://38.38.251.86:8000${url}`, '_blank');
+  window.open(`${url}`, '_blank');
 }
 
 const share = async (article) => {
@@ -72,22 +72,21 @@ const share = async (article) => {
           <p>暂无通知</p>
         </div>
         
-        <div v-else v-for="(article, index) in tongzhiStore.tongzhiArticles" :key="index" class="layout-single-image">
+        <div v-else v-for="(article, index) in tongzhiStore.tongzhiArticles" :key="index" class="layout-single-image" @click="openLink(article.url)">
           <div class="layout-single-image-l">
-            <div style="color:#333333;" @click="openLink(`/tongzhiContent?id=${article.id}`)">
+            <div style="color:#333333;">
               {{ article.title }}
             </div>
-            <button v-if="canShare" style="width: fit-content;" @click="share(article)">分享</button>
+            <button v-if="canShare" style="width: fit-content;" @click.stop="share(article)">分享</button>
           </div>
           <el-image 
-            :src="article.content.match(/!\[.*?\]\((.*?)\)/)?.[1] ? 
+            :src="article.content && typeof article.content === 'string' && article.content.match(/!\[.*?\]\((.*?)\)/)?.[1] ? 
               (article.content.match(/!\[.*?\]\((.*?)\)/)[1].startsWith('http') ? 
                 article.content.match(/!\[.*?\]\((.*?)\)/)[1] : 
                 `http://38.38.251.86:8001${article.content.match(/!\[.*?\]\((.*?)\)/)[1]}`) : 
               ''" 
             fit="cover" 
-            class="image-content" 
-            @click="openLink(`/tongzhiContent?id=${article.id}`)">
+            class="image-content">
             <template #error>
               <div class="image-placeholder">暂无图片</div>
             </template>

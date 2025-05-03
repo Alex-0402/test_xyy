@@ -4,11 +4,16 @@ const title_hq = ref('后勤管理处')
 </script>
 
 <template>
-   <footer>
+   <footer style="line-height: 50px;">
+    <!-- <div class="back-fonts">
+      Powered by
+    </div> -->
     <a href="https://hqxxh.qd.sdu.edu.cn/index.htm" :title="title_hq">
       {{ title_hq }}
     </a>
-    © 2023
+    &times;
+    <img src="@/assets/openlab.png" alt="logo" style="width: 150px; height: 50px; margin-left: -5px; vertical-align: middle; transform: translate(0, -3px);" />
+    <!-- © 2025  -->
   </footer>
 </template>
 
@@ -29,5 +34,16 @@ footer {
 a {
   text-decoration: none;
   color: white;
+}
+
+.back-fonts {
+  position: absolute;
+  left: 0px;
+  top: 0px;
+  font-size: 24px;
+  font-weight: bold;
+  color: #ffffff56;
+  padding-left: 20px;
+  line-height: 56px;
 }
 </style>

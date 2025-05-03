@@ -46,6 +46,29 @@ export const useTongzhiStore = defineStore('tongzhi', {
       } finally {
         this.isLoading = false;
       }
+    },
+    updateTongzhiArticles(updatedArticles) {
+      this.tongzhiArticles = updatedArticles;
+      this.tongzhiArticleList = updatedArticles; // 保持与视图兼容
+
+      // 同步更新到后端
+      updatedArticles.forEach(async (article) => {
+        try {
+          await axios.put(`${API_BASE_URL}/articles/${article.id}`, {
+            title: article.title,
+            content: article.content,
+            pic: article.pic,
+            is_pinned: article.is_pinned || false,
+          }, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+              'Content-Type': 'application/json',
+            },
+          });
+        } catch (error) {
+          console.error(`更新文章 ${article.id} 失败:`, error);
+        }
+      });
     }
   }
 });
