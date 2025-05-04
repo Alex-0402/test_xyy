@@ -19,8 +19,8 @@ export const useZhinanStore = defineStore('zhinan', {
       this.error = null;
       
       try {
-        console.log('调用指南API:', `${API_BASE_URL}/articles?type=guide&index=${page}&size=${pageSize}`);
-        const response = await axios.get(`${API_BASE_URL}/articles`, {
+        console.log('调用指南API:', `${API_BASE_URL}/articles?type=guide&index=${page}&size=${pageSize}/`);
+        const response = await axios.get(`${API_BASE_URL}/articles/`, {
           params: {
             type: 'guide',
             index: page,
@@ -54,10 +54,11 @@ export const useZhinanStore = defineStore('zhinan', {
       // 同步更新到后端
       updatedArticles.forEach(async (article) => {
         try {
-          await axios.put(`${API_BASE_URL}/articles/${article.id}`, {
+          await axios.put(`${API_BASE_URL}/articles/${article.id}/`, {
+            article_type: 'guide',
             title: article.title,
-            content: article.content,
-            pic: article.pic,
+            url: article.url,
+            pic: article.pic, // 添加封面图片字段
             is_pinned: article.is_pinned || false,
           }, {
             headers: {

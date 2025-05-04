@@ -81,11 +81,7 @@ const share = async (article) => {
             <button v-if="canShare" style="width: fit-content;" @click.stop="share(article)">分享</button>
           </div>
           <el-image 
-            :src="article.content && typeof article.content === 'string' && article.content.match(/!\[.*?\]\((.*?)\)/)?.[1] ? 
-              (article.content.match(/!\[.*?\]\((.*?)\)/)[1].startsWith('http') ? 
-                article.content.match(/!\[.*?\]\((.*?)\)/)[1] : 
-                `http://38.38.251.86:8001${article.content.match(/!\[.*?\]\((.*?)\)/)[1]}`) : 
-              ''" 
+            :src="article.image_url" 
             fit="cover" 
             class="image-content">
             <template #error>

@@ -2,7 +2,7 @@
 import PageTitle from '../../components/PageTitle.vue';
 import { useXinwenStore } from '../../stores/xinwen';
 import { ref, onMounted } from 'vue';
-import { API_BASE_URL } from '../../stores/api-config';
+import { API_BASE_URL, MEDIA_BASE_URL } from '../../stores/api-config';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import axios from 'axios';
 
@@ -29,7 +29,7 @@ const form = ref({
   id: 0,
   title: '',
   content: '',
-  pic: '', // 新增封面图片字段
+  image_url: '',
 });
 
 const resetForm = () => {
@@ -37,7 +37,7 @@ const resetForm = () => {
     id: articles.value.length > 0 ? Math.max(...articles.value.map(a => a.id || 0)) + 1 : 1,
     title: '',
     content: '',
-    pic: '', // 重置封面图片字段
+    image_url: '',
   };
 };
 
@@ -81,49 +81,72 @@ const handleAdd = () => {
   dialogVisible.value = true;
 };
 
-const submitForm = async () => {
-  form.value.title = form.value.title || ''; // 如果为空则置为空字符串
-  form.value.content = form.value.content || ''; // 如果为空则置为空字符串
-  form.value.pic = form.value.pic || ''; // 如果为空则置为空字符串
+// 添加图片上传相关函数
+const uploadUrl = `${API_BASE_URL}/upload/article-image/`;
 
+const handleUploadSuccess = (response) => {
+  if (response && response.code === 201) {
+    const imageUrl = `${MEDIA_BASE_URL}/${response.url}`;
+    form.value.image_url = imageUrl;
+    ElMessage.success('图片上传成功');
+  } else {
+    ElMessage.error('图片上传失败');
+  }
+};
+
+const handleUploadError = (error) => {
+  console.error('上传失败:', error);
+  ElMessage.error('图片上传失败');
+};
+
+const submitForm = async () => {
   try {
+    const formData = {
+      article_type: 'news',
+      title: form.value.title || '',
+      url: form.value.url || '',
+      image_url: form.value.image_url || '',
+      is_pinned: false,
+      is_reproduced: false,
+    };
+
     if (isEditing.value) {
-      await axios.put(`${API_BASE_URL}/articles/${form.value.id}/`, {
-        title: form.value.title,
-        url: form.value.url,
-        pic: form.value.pic, // 更新封面图片字段
-        is_pinned: false,
-        article_type: 'news',
-      }, {
+      const response = await axios.put(`${API_BASE_URL}/articles/${form.value.id}/`, formData, {
         headers: {
           'Authorization': `Bearer ${getToken()}`,
           'Content-Type': 'application/json'
         }
       });
-      articles.value[editingIndex.value] = { ...form.value };
-      ElMessage.success('文章已更新');
+      
+      if (response.data.code === 200) {
+        articles.value[editingIndex.value] = {
+          ...form.value,
+          ...response.data.data
+        };
+        ElMessage.success('文章已更新');
+      }
     } else {
-      const response = await axios.post(`${API_BASE_URL}/articles/`, {
-        article_type: 'news',
-        title: form.value.title,
-        url: form.value.url,
-        pic: form.value.pic, // 添加封面图片字段
-        is_pinned: false,
-      }, {
+      const response = await axios.post(`${API_BASE_URL}/articles/`, formData, {
         headers: {
           'Authorization': `Bearer ${getToken()}`,
           'Content-Type': 'application/json'
         }
       });
-      articles.value.push({ ...form.value, id: response.data.data.id });
-      ElMessage.success('文章已添加');
+      
+      if (response.data.code === 201) {
+        articles.value.push({
+          ...form.value,
+          ...response.data.data
+        });
+        ElMessage.success('文章已添加');
+      }
     }
 
     xinwenStore.updateXinwenArticles(articles.value);
     dialogVisible.value = false;
   } catch (error) {
-    ElMessage.error('操作失败，请检查权限或稍后再试');
     console.error('提交表单失败:', error);
+    ElMessage.error(error.response?.data?.message || '操作失败，请检查权限或稍后再试');
   }
 };
 </script>
@@ -143,7 +166,7 @@ const submitForm = async () => {
           <el-table-column label="标题" prop="title" min-width="200" />
           <el-table-column label="封面" min-width="120">
             <template #default="{ row }">
-              <el-image :src="row.pic" style="width: 80px; height: 60px;" fit="cover" />
+              <el-image :src="row.image_url" style="width: 80px; height: 60px;" fit="cover" />
             </template>
           </el-table-column>
           <el-table-column label="链接" prop="url" min-width="150" />
@@ -164,8 +187,28 @@ const submitForm = async () => {
             <el-form-item label="标题">
               <el-input v-model="form.title" placeholder="请输入文章标题" />
             </el-form-item>
-            <el-form-item label="封面URL">
-              <el-input v-model="form.pic" placeholder="请输入封面图片URL" />
+            <el-form-item label="封面">
+              <div class="image-uploader">
+                <el-upload
+                  class="upload-demo"
+                  :action="uploadUrl"
+                  :headers="{ Authorization: `Bearer ${getToken()}` }"
+                  :on-success="handleUploadSuccess"
+                  :on-error="handleUploadError"
+                  :show-file-list="false"
+                  accept="image/*"
+                  name="image"
+                >
+                  <template v-if="form.image_url">
+                    <el-image 
+                      :src="form.image_url" 
+                      class="preview-image"
+                      fit="cover"
+                    />
+                  </template>
+                  <el-button v-else size="small" type="primary">上传图片</el-button>
+                </el-upload>
+              </div>
             </el-form-item>
             <el-form-item label="链接">
               <el-input v-model="form.url" placeholder="请输入文章链接" />
@@ -211,5 +254,21 @@ const submitForm = async () => {
 
 .el-table {
   margin-bottom: 20px;
+}
+
+.image-uploader {
+  display: flex;
+  align-items: center;
+}
+
+.preview-image {
+  width: 200px;
+  height: 120px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.preview-image:hover {
+  opacity: 0.8;
 }
 </style>
