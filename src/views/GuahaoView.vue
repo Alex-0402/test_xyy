@@ -10,7 +10,7 @@ import { useDoctorStore } from "../stores/doctor";
 import '@/assets/styles/common.css'; // 引入全局样式
 import { getDepartments, getDepartmentSchedules } from '../utils/scheduleApi';
 import { ElMessage, ElLoading, ElDialog } from 'element-plus';
-import doctorPlaceholder from '@/assets/images/doctor-placeholder.png'; // 导入占位图片
+import doctorPlaceholder from '@/assets/default_avatar.png'; // 导入占位图片
 
 const keshiStore = useKeshiStore()
 const doctorStore = useDoctorStore()
@@ -484,6 +484,17 @@ const showDoctorDetail = (doctor) => {
     border-radius: 4px; /* 给所有日期添加相同圆角，防止选中时形状变化 */
 }
 
+/* 默认适配桌面端 */
+.el-divider {
+  margin: 20px 0;
+}
+
+/* 移动端适配（屏幕宽度小于 768px） */
+@media screen and (max-width: 768px) {
+  .el-divider {
+    margin: 8px 0;
+  }
+}
 .date-number {
     font-size: 24px;
     font-weight: 500;
