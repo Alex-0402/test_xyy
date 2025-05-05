@@ -19,11 +19,11 @@ export const useXinwenStore = defineStore('xinwen', {
       this.error = null;
       
       try {
-        console.log('调用新闻API:', `${API_BASE_URL}/articles?type=news&index=${page}&size=${pageSize}/`);
+        console.log('调用新闻API:', `${API_BASE_URL}/articles?type=news&index=${page.index}&size=${pageSize}/`);
         const response = await axios.get(`${API_BASE_URL}/articles/`, {
           params: {
             type: 'news',
-            index: page,
+            index: page.index,
             size: pageSize
           }
         });

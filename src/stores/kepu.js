@@ -19,11 +19,11 @@ export const useKepuStore = defineStore('kepu', {
       this.error = null;
       
       try {
-        console.log('调用科普API:', `${API_BASE_URL}/articles?type=science&index=${page}&size=${pageSize}/`);
+        console.log('调用科普API:', `${API_BASE_URL}/articles?type=science&index=${page.index}&size=${pageSize}/`);
         const response = await axios.get(`${API_BASE_URL}/articles/`, {
           params: {
             type: 'science',
-            index: page,
+            index: page.index,
             size: pageSize
           }
         });

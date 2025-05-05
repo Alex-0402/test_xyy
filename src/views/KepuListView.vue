@@ -3,12 +3,15 @@ import PageTitle from '../components/PageTitle.vue'
 import { useKepuStore } from '../stores/kepu';
 import '@/assets/styles/common.css'; // 引入全局样式
 import { onMounted, ref } from 'vue';
-import { ElButton, ElImage } from 'element-plus';
+import { ElButton, ElImage, ElPagination } from 'element-plus';
 
 const kepuStore = useKepuStore();
 const isLoading = ref(true);
 const loadError = ref(false);
 const canShare = ref(false); // 初始设置为 false
+const currentPage = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
 
 onMounted(() => {
   // 在组件挂载后（客户端环境中）安全地检测 share API
@@ -20,7 +23,12 @@ onMounted(async () => {
   loadError.value = false;
   
   try {
-    await kepuStore.fetchKepu();
+    await kepuStore.fetchKepu({
+      index: currentPage.value,
+      size: pageSize.value
+    });
+    total.value = kepuStore.totalPages*pageSize.value || 0;
+    console.log("科普数据加载完成!:", total.value);
     console.log("科普数据加载完成:", kepuStore.kepuArticles);
   } catch (error) {
     console.error('加载科普失败:', error);
@@ -51,6 +59,18 @@ const share = async (article) => {
     console.log('浏览器不支持Web Share API')
   }
 }
+
+const handlePageChange = async (page) => {
+  currentPage.value = page;
+  try {
+    await kepuStore.fetchKepu({
+      index: currentPage.value,
+      size: pageSize.value
+    });
+  } catch (error) {
+    console.error('加载科普失败:', error);
+  }
+};
 
 </script>
 
@@ -88,6 +108,17 @@ const share = async (article) => {
               <div class="image-placeholder">暂无图片</div>
             </template>
           </el-image>
+        </div>
+        
+        <div v-if="!isLoading && !loadError && kepuStore.kepuArticles?.length > 0" 
+             class="pagination-container">
+          <el-pagination
+            v-model:current-page="currentPage"
+            :page-size="pageSize"
+            :total="total"
+            @current-change="handlePageChange"
+            layout="prev, pager, next"
+          />
         </div>
       </el-scrollbar>
     </div>
@@ -177,6 +208,13 @@ const share = async (article) => {
   to {
     transform: rotate(360deg);
   }
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+  width: 100%;
 }
 </style>
 

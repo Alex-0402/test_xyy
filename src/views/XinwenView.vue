@@ -3,12 +3,15 @@ import PageTitle from '../components/PageTitle.vue'
 import { useXinwenStore } from '../stores/xinwen';
 import '@/assets/styles/common.css'; // 引入全局样式
 import { onMounted, ref } from 'vue';
-import { ElButton, ElImage } from 'element-plus';
+import { ElButton, ElImage, ElPagination } from 'element-plus';
 
 const xinwenStore = useXinwenStore();
 const isLoading = ref(true);
 const loadError = ref(false);
 const canShare = ref(false); // 初始设置为 false
+const currentPage = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
 
 onMounted(() => {
   // 在组件挂载后（客户端环境中）安全地检测 share API
@@ -20,7 +23,11 @@ onMounted(async () => {
   loadError.value = false;
   
   try {
-    await xinwenStore.fetchXinwen();
+    await xinwenStore.fetchXinwen({
+      index: currentPage.value,
+      size: pageSize.value
+    });
+    total.value = xinwenStore.totalPages || 0;
   } catch (error) {
     console.error('加载新闻失败:', error);
     loadError.value = true;
@@ -48,6 +55,18 @@ const share = async (article) => {
     }
   } else {
     console.log('浏览器不支持Web Share API')
+  }
+}
+
+const handlePageChange = async (page) => {
+  currentPage.value = page;
+  try {
+    await xinwenStore.fetchXinwen({
+      index: currentPage.value,
+      size: pageSize.value
+    });
+  } catch (error) {
+    console.error('加载新闻失败:', error);
   }
 }
 
@@ -87,6 +106,16 @@ const share = async (article) => {
               <div class="image-placeholder">暂无图片</div>
             </template>
           </el-image>
+        </div>
+        <div v-if="!isLoading && !loadError && xinwenStore.xinwenArticles?.length > 0" 
+             class="pagination-container">
+          <el-pagination
+            v-model:current-page="currentPage"
+            :page-size="pageSize"
+            :total="total"
+            @current-change="handlePageChange"
+            layout="prev, pager, next"
+          />
         </div>
       </el-scrollbar>
     </div>
@@ -177,6 +206,13 @@ const share = async (article) => {
   to {
     transform: rotate(360deg);
   }
+}
+
+.pagination-container {
+  display: flex;
+  justify-content: center;
+  padding: 20px 0;
+  width: 100%;
 }
 </style>
 

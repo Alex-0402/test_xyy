@@ -19,11 +19,11 @@ export const useZhinanStore = defineStore('zhinan', {
       this.error = null;
       
       try {
-        console.log('调用指南API:', `${API_BASE_URL}/articles?type=guide&index=${page}&size=${pageSize}/`);
+        console.log('调用指南API:', `${API_BASE_URL}/articles?type=guide&index=${page.index}&size=${pageSize}/`);
         const response = await axios.get(`${API_BASE_URL}/articles/`, {
           params: {
             type: 'guide',
-            index: page,
+            index: page.index,
             size: pageSize
           }
         });

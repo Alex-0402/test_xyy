@@ -13,14 +13,35 @@ const getToken = () => {
   return localStorage.getItem('access_token');
 };
 
+const currentPage = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
+
 onMounted(async () => {
   try {
-    await zhinanStore.fetchZhinan();
+    await zhinanStore.fetchZhinan({
+      index: currentPage.value,
+      size: pageSize.value
+    });
     articles.value = [...zhinanStore.zhinanArticleList];
+    total.value = zhinanStore.totalPages * pageSize.value;
   } catch (error) {
     console.error('加载服务指南文章失败:', error);
   }
 });
+
+const handlePageChange = async (page) => {
+  try {
+    currentPage.value = page;
+    await zhinanStore.fetchZhinan({
+      index: currentPage.value,
+      size: pageSize.value
+    });
+    articles.value = [...zhinanStore.zhinanArticleList];
+  } catch (error) {
+    console.error('加载服务指南文章失败:', error);
+  }
+};
 
 const dialogVisible = ref(false);
 const editingIndex = ref(-1);
@@ -182,6 +203,14 @@ const handleUploadError = (error) => {
             </template>
           </el-table-column>
         </el-table>
+
+        <el-pagination
+          v-model:current-page="currentPage"
+          :page-size="pageSize"
+          :total="total"
+          @current-change="handlePageChange"
+          layout="prev, pager, next"
+        />
 
         <el-dialog
           v-model="dialogVisible"

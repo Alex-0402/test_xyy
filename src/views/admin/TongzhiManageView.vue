@@ -13,14 +13,35 @@ const getToken = () => {
   return localStorage.getItem('access_token');
 };
 
+const currentPage = ref(1);
+const pageSize = ref(10);
+const total = ref(0);
+
 onMounted(async () => {
   try {
-    await tongzhiStore.fetchTongzhi();
+    await tongzhiStore.fetchTongzhi({
+      index: currentPage.value,
+      size: pageSize.value
+    });
     articles.value = [...tongzhiStore.tongzhiArticleList];
+    total.value = tongzhiStore.totalPages * pageSize.value;
   } catch (error) {
     console.error('加载通知文章失败:', error);
   }
 });
+
+const handlePageChange = async (page) => {
+  try {
+    currentPage.value = page;
+    await tongzhiStore.fetchTongzhi({
+      index: currentPage.value,
+      size: pageSize.value
+    });
+    articles.value = [...tongzhiStore.tongzhiArticleList];
+  } catch (error) {
+    console.error('加载通知文章失败:', error);
+  }
+};
 
 const dialogVisible = ref(false);
 const editingIndex = ref(-1);
@@ -177,6 +198,14 @@ const submitForm = async () => {
             </template>
           </el-table-column>
         </el-table>
+
+        <el-pagination
+          v-model:current-page="currentPage"
+          :page-size="pageSize"
+          :total="total"
+          @current-change="handlePageChange"
+          layout="prev, pager, next"
+        />
 
         <el-dialog
           v-model="dialogVisible"

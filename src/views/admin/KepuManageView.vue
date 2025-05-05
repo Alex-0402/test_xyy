@@ -13,15 +13,36 @@ const getToken = () => {
   return localStorage.getItem('access_token');
 };
 
+const currentPage = ref(1); 
+const pageSize = ref(10);
+const total = ref(0);
+
 // 在组件挂载时获取文章列表
 onMounted(async () => {
   try {
-    await kepuStore.fetchKepu();
+    await kepuStore.fetchKepu({
+      index: currentPage.value,
+      size: pageSize.value
+    });
     articles.value = [...kepuStore.kepuArticleList];
+    total.value = kepuStore.totalPages * pageSize.value;
   } catch (error) {
     console.error('加载科普文章失败:', error);
   }
 });
+
+const handlePageChange = async (page) => {
+  try {
+    currentPage.value = page;
+    await kepuStore.fetchKepu({
+      index: currentPage.value, 
+      size: pageSize.value
+    });
+    articles.value = [...kepuStore.kepuArticleList];
+  } catch (error) {
+    console.error('加载科普文章失败:', error);
+  }
+};
 
 // 表单数据
 const dialogVisible = ref(false);
@@ -168,6 +189,14 @@ const submitForm = async () => {
             </template>
           </el-table-column>
         </el-table>
+
+        <el-pagination
+          v-model:current-page="currentPage"
+          :page-size="pageSize"
+          :total="total"
+          @current-change="handlePageChange"
+          layout="prev, pager, next"
+        />
 
         <el-dialog
           v-model="dialogVisible"
