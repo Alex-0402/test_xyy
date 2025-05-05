@@ -9,7 +9,8 @@ import { useKeshiStore } from '../stores/keshi'
 import { useDoctorStore } from "../stores/doctor";
 import '@/assets/styles/common.css'; // 引入全局样式
 import { getDepartments, getDepartmentSchedules } from '../utils/scheduleApi';
-import { ElMessage, ElLoading } from 'element-plus';
+import { ElMessage, ElLoading, ElDialog } from 'element-plus';
+import doctorPlaceholder from '@/assets/images/doctor-placeholder.png'; // 导入占位图片
 
 const keshiStore = useKeshiStore()
 const doctorStore = useDoctorStore()
@@ -270,6 +271,16 @@ onMounted(async () => {
         updateShowDateToFirstSchedule();
     }
 });
+
+// 用于显示医生详情的弹窗控制
+const doctorDetailDialogVisible = ref(false);
+const selectedDoctor = ref(null);
+
+// 显示医生详情的函数
+const showDoctorDetail = (doctor) => {
+    selectedDoctor.value = doctor;
+    doctorDetailDialogVisible.value = true;
+};
 </script>
 
 <template>
@@ -347,12 +358,73 @@ onMounted(async () => {
                     <div v-else-if="doctorList.length === 0" class="no-doctor-message">当前日期没有医生出诊</div>
                     <div v-else class="doctor-list">
                         <div v-for="(doctor, index) in doctorList" :key="doctor.id" class="doctor-item">
-                            <doctor-card :name="doctor.name" :title="doctor.title" :goodat="doctor.goodat" :pic="doctor.pic" :web="doctor.web"></doctor-card>
+                            <doctor-card 
+                                :name="doctor.name" 
+                                :title="doctor.title" 
+                                :goodat="doctor.goodat" 
+                                :pic="doctor.pic" 
+                                :web="doctor.web"
+                                @click="showDoctorDetail(doctor)"
+                                class="clickable-card"
+                            ></doctor-card>
                         </div>
                     </div>
                 </el-scrollbar>
             </div>
         </div>
+
+        <!-- 医生详情弹窗 -->
+        <el-dialog
+            v-model="doctorDetailDialogVisible"
+            :title="selectedDoctor?.name ? selectedDoctor.name + ' 医生详情' : '医生详情'"
+            width="90%"
+            class="doctor-detail-dialog"
+            :before-close="() => doctorDetailDialogVisible = false"
+        >
+            <div v-if="selectedDoctor" class="doctor-detail-content">
+                <div class="doctor-detail-header">
+                    <img
+                        :src="selectedDoctor.pic || doctorPlaceholder"
+                        :alt="selectedDoctor.name"
+                        class="doctor-detail-avatar"
+                        @error="e => e.target.src = doctorPlaceholder"
+                    />
+                    <div class="doctor-detail-info">
+                        <h2>{{ selectedDoctor.name }}</h2>
+                        <p class="doctor-title">{{ selectedDoctor.title || '医师' }}</p>
+                        <p class="doctor-department">
+                            {{ currentKeshi.name || '门诊部' }}
+                        </p>
+                    </div>
+                </div>
+                
+                <el-divider />
+                
+                <div class="doctor-detail-section">
+                    <h3 class="section-title">擅长领域</h3>
+                    <p class="doctor-detail-text">{{ selectedDoctor.goodat || '暂无相关信息' }}</p>
+                </div>
+                
+                <el-divider />
+                
+                <div class="doctor-detail-section">
+                    <h3 class="section-title">出诊信息</h3>
+                    <p class="doctor-detail-text">
+                        出诊日期: {{ showDate.format('YYYY年MM月DD日') }}
+                    </p>
+                    <p class="doctor-detail-text">
+                        出诊时间: {{ officeHours }}
+                    </p>
+                </div>
+                
+                <div class="doctor-detail-actions">
+                    <el-button type="primary" @click="doctorDetailDialogVisible = false">关闭</el-button>
+                </div>
+            </div>
+            <div v-else class="no-doctor-selected">
+                <p>未选择医生，请稍后再试。</p>
+            </div>
+        </el-dialog>
     </div>
 </template>
   
@@ -545,15 +617,12 @@ onMounted(async () => {
     font-size: 14px;
     text-align: center;
     word-break: break-all;
-}
-
-.keshi-list li:hover {
-    background-color: rgba(255, 255, 255, 0.8);
+    color: #000; /* 明确设置文字颜色为黑色 */
 }
 
 .keshi-list li.active {
     background-color: #9c0c15;
-    color: white;
+    color: white !important; /* 确保激活状态文字为白色 */
     font-weight: bold;
 }
 
@@ -642,28 +711,49 @@ onMounted(async () => {
     :deep(.doctor-card) {
         padding: 10px 8px; /* 减小内边距 */
         border-radius: 5px; /* 减小圆角 */
+        display: flex;
+        align-items: flex-start;
     }
     
     :deep(.doctor-avatar) {
         width: 60px; /* 减小头像尺寸 */
         height: 60px; /* 减小头像尺寸 */
         margin-right: 10px; /* 减小右边距 */
+        object-fit: cover; /* 确保图片比例正确 */
+        border-radius: 4px; /* 头像圆角 */
+        flex-shrink: 0; /* 防止头像被压缩 */
+    }
+    
+    :deep(.doctor-info) {
+        flex: 1; /* 让信息区域占据剩余空间 */
+        overflow: hidden; /* 防止文本溢出 */
     }
     
     :deep(.doctor-info h3) {
         font-size: 15px; /* 减小字体 */
         margin-bottom: 4px; /* 减小下边距 */
+        white-space: nowrap; /* 防止换行 */
+        overflow: hidden; /* 隐藏溢出 */
+        text-overflow: ellipsis; /* 显示省略号 */
     }
     
     :deep(.doctor-info p) {
         font-size: 12px; /* 减小字体 */
         margin-bottom: 3px; /* 减小下边距 */
+        white-space: nowrap; /* 防止换行 */
+        overflow: hidden; /* 隐藏溢出 */
+        text-overflow: ellipsis; /* 显示省略号 */
     }
     
     :deep(.doctor-goodat) {
         font-size: 12px; /* 减小字体 */
         line-height: 1.35; /* 调整行高 */
         max-height: 70px; /* 减小最大高度 */
+        overflow: hidden; /* 隐藏溢出 */
+        display: -webkit-box;
+        -webkit-box-orient: vertical;
+        -webkit-line-clamp: 3; /* 最多显示3行 */
+        text-overflow: ellipsis; /* 显示省略号 */
     }
 }
 
@@ -734,39 +824,92 @@ onMounted(async () => {
     }
     
     :deep(.doctor-card) {
-        padding: 6px 5px; /* 进一步减小内边距 */
+        padding: 8px 6px; /* 进一步减小内边距 */
         border-radius: 4px; /* 进一步减小圆角 */
     }
     
     :deep(.doctor-avatar) {
-        width: 45px; /* 进一步减小头像尺寸 */
-        height: 45px; /* 进一步减小头像尺寸 */
-        margin-right: 6px; /* 进一步减小右边距 */
+        width: 50px; /* 进一步减小头像尺寸 */
+        height: 50px; /* 进一步减小头像尺寸 */
+        margin-right: 8px; /* 进一步减小右边距 */
+        border-radius: 3px; /* 减小圆角 */
     }
     
     :deep(.doctor-info h3) {
         font-size: 13px; /* 进一步减小字体 */
         margin-bottom: 3px; /* 进一步减小下边距 */
+        font-weight: 600; /* 加粗姓名 */
     }
     
     :deep(.doctor-info p) {
         font-size: 11px; /* 进一步减小字体 */
         margin-bottom: 2px; /* 进一步减小下边距 */
+        color: #666; /* 更改颜色提高对比度 */
     }
     
     :deep(.doctor-goodat) {
-        font-size: 10px; /* 进一步减小字体 */
+        font-size: 11px; /* 进一步减小字体 */
         line-height: 1.25; /* 调整行高 */
         max-height: 55px; /* 进一步减小最大高度 */
+        -webkit-line-clamp: 2; /* 最多显示2行 */
+        color: #333; /* 更深颜色提高可读性 */
     }
     
     :deep(.operation-buttons) {
         margin-top: 4px; /* 减小上边距 */
+        display: flex;
+        justify-content: space-between; /* 按钮均匀分布 */
     }
     
     :deep(.operation-buttons button) {
         font-size: 11px; /* 减小字体 */
         padding: 3px 6px; /* 减小内边距 */
+        flex: 1; /* 按钮平均分配空间 */
+        margin: 0 2px; /* 增加按钮间距 */
+    }
+
+    .doctor-detail-dialog :deep(.el-dialog) {
+        width: 95% !important;
+        margin: 10px auto !important;
+    }
+    
+    .doctor-detail-content {
+        padding: 0 8px; /* 调整内边距 */
+    }
+
+    .doctor-detail-avatar {
+        width: 60px;
+        height: 60px;
+        margin-right: 15px;
+    }
+    
+    .doctor-detail-info h2 {
+        font-size: 18px;
+        margin-bottom: 6px;
+    }
+    
+    .doctor-title {
+        font-size: 14px;
+        margin-bottom: 3px;
+    }
+    
+    .doctor-department {
+        font-size: 12px;
+    }
+    
+    .section-title {
+        font-size: 15px;
+        margin-bottom: 8px;
+    }
+    
+    .doctor-detail-text {
+        font-size: 13px;
+    }
+
+    .doctor-detail-actions button {
+        width: 50%; /* 调整按钮宽度 */
+        padding: 8px 15px; /* 调整按钮内边距 */
+        font-size: 14px; /* 调整按钮字体大小 */
     }
 }
 
@@ -784,7 +927,6 @@ onMounted(async () => {
     
     .date-nav {
         height: 38px;
-        flex-wrap: wrap;
     }
     
     .date-day {
@@ -823,8 +965,313 @@ onMounted(async () => {
         line-height: 1.2; /* 调整行高 */
     }
 
-    .date-item {
-        margin: 1px 0;
+    .doctor-detail-content {
+        padding: 0 5px; /* 进一步减小内边距 */
+    }
+
+    .doctor-detail-avatar {
+        width: 50px;
+        height: 50px;
+        margin-right: 10px;
+    }
+    
+    .doctor-detail-info h2 {
+        font-size: 16px;
+        margin-bottom: 4px;
+    }
+    
+    .doctor-title, .doctor-department {
+        font-size: 12px;
+        margin-bottom: 2px;
+    }
+    
+    .section-title {
+        font-size: 14px;
+        margin-bottom: 6px;
+    }
+    
+    .doctor-detail-text {
+        font-size: 12px;
+        line-height: 1.5;
+    }
+    
+    .doctor-detail-actions button {
+        width: 60%; /* 调整按钮宽度 */
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+}
+
+/* 添加新的超窄屏适配 */
+@media screen and (max-width: 320px) {
+    .keshi-nav-container {
+        width: 60px;
+        margin-right: 2px;
+    }
+    
+    .keshi-list li {
+        padding: 5px 2px;
+        font-size: 9px;
+        margin-bottom: 3px;
+    }
+    
+    :deep(.doctor-avatar) {
+        width: 40px;
+        height: 40px;
+        margin-right: 5px;
+    }
+    
+    :deep(.doctor-info h3) {
+        font-size: 11px;
+    }
+    
+    :deep(.doctor-info p) {
+        font-size: 9px;
+    }
+    
+    :deep(.doctor-goodat) {
+        font-size: 9px;
+        line-height: 1.1;
+        max-height: 35px;
+        -webkit-line-clamp: 2;
+    }
+    
+    :deep(.operation-buttons) {
+        flex-direction: column;
+        gap: 2px;
+    }
+    
+    :deep(.operation-buttons button) {
+        width: 100%;
+        margin: 0;
+        font-size: 9px;
+        padding: 2px;
+    }
+
+    .doctor-detail-avatar {
+        width: 45px;
+        height: 45px;
+        margin-right: 8px;
+    }
+
+    .doctor-detail-info h2 {
+        font-size: 15px;
+    }
+
+    .doctor-title, .doctor-department {
+        font-size: 11px;
+    }
+
+    .section-title {
+        font-size: 13px;
+        margin-bottom: 5px;
+    }
+
+    .doctor-detail-text {
+        font-size: 11px;
+        line-height: 1.4;
+    }
+
+    .doctor-detail-actions button {
+        width: 70%;
+        font-size: 12px;
+        padding: 5px 10px;
+    }
+}
+
+/* 添加医生卡片点击效果 */
+:deep(.clickable-card) {
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+:deep(.clickable-card:hover) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+:deep(.clickable-card:active) {
+    transform: translateY(0);
+}
+
+/* 医生详情弹窗样式 */
+.doctor-detail-content {
+    padding: 0 10px;
+}
+
+.doctor-detail-header {
+    display: flex;
+    align-items: center;
+    padding: 10px 0;
+}
+
+.doctor-detail-avatar {
+    width: 80px;
+    height: 80px;
+    border-radius: 6px;
+    object-fit: cover;
+    margin-right: 20px;
+    border: 1px solid #eee;
+}
+
+.doctor-detail-info {
+    flex: 1;
+}
+
+.doctor-detail-info h2 {
+    margin: 0 0 8px 0;
+    font-size: 20px;
+    color: #333;
+}
+
+.doctor-title {
+    font-size: 16px;
+    color: #666;
+    margin: 0 0 5px 0;
+}
+
+.doctor-department {
+    font-size: 14px;
+    color: #888;
+    margin: 0;
+}
+
+.doctor-detail-section {
+    margin: 15px 0;
+}
+
+.section-title {
+    font-size: 16px;
+    color: #333;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.doctor-detail-text {
+    font-size: 14px;
+    color: #555;
+    line-height: 1.6;
+    margin: 5px 0;
+}
+
+.doctor-detail-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
+    padding-bottom: 10px; /* 增加底部间距 */
+}
+
+/* 弹窗响应式调整 */
+@media screen and (max-width: 480px) {
+    .doctor-detail-dialog :deep(.el-dialog) {
+        width: 95% !important;
+        margin: 10px auto !important;
+    }
+    
+    .doctor-detail-content {
+        padding: 0 8px; /* 调整内边距 */
+    }
+
+    .doctor-detail-avatar {
+        width: 60px;
+        height: 60px;
+        margin-right: 15px;
+    }
+    
+    .doctor-detail-info h2 {
+        font-size: 18px;
+        margin-bottom: 6px;
+    }
+    
+    .doctor-title {
+        font-size: 14px;
+        margin-bottom: 3px;
+    }
+    
+    .doctor-department {
+        font-size: 12px;
+    }
+    
+    .section-title {
+        font-size: 15px;
+        margin-bottom: 8px;
+    }
+    
+    .doctor-detail-text {
+        font-size: 13px;
+    }
+
+    .doctor-detail-actions button {
+        width: 50%; /* 调整按钮宽度 */
+        padding: 8px 15px; /* 调整按钮内边距 */
+        font-size: 14px; /* 调整按钮字体大小 */
+    }
+}
+
+@media screen and (max-width: 375px) {
+    .doctor-detail-avatar {
+        width: 50px;
+        height: 50px;
+        margin-right: 10px;
+    }
+    
+    .doctor-detail-info h2 {
+        font-size: 16px;
+        margin-bottom: 4px;
+    }
+    
+    .doctor-title, .doctor-department {
+        font-size: 12px;
+        margin-bottom: 2px;
+    }
+    
+    .section-title {
+        font-size: 14px;
+        margin-bottom: 6px;
+    }
+    
+    .doctor-detail-text {
+        font-size: 12px;
+        line-height: 1.5;
+    }
+    
+    .doctor-detail-actions button {
+        width: 60%; /* 调整按钮宽度 */
+        padding: 6px 12px;
+        font-size: 13px;
+    }
+}
+
+/* 为超小屏幕添加适配 */
+@media screen and (max-width: 320px) {
+    .doctor-detail-avatar {
+        width: 45px;
+        height: 45px;
+        margin-right: 8px;
+    }
+
+    .doctor-detail-info h2 {
+        font-size: 15px;
+    }
+
+    .doctor-title, .doctor-department {
+        font-size: 11px;
+    }
+
+    .section-title {
+        font-size: 13px;
+        margin-bottom: 5px;
+    }
+
+    .doctor-detail-text {
+        font-size: 11px;
+        line-height: 1.4;
+    }
+
+    .doctor-detail-actions button {
+        width: 70%;
+        font-size: 12px;
+        padding: 5px 10px;
     }
 }
 </style>

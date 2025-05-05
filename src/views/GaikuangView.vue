@@ -1,3 +1,3 @@
 <script setup>
-window.location.replace('https://hq.qd.sdu.edu.cn/info/1014/2035.htm')
+window.location.replace('https://hq.qd.sdu.edu.cn/info/1037/2550.htm')
 </script>

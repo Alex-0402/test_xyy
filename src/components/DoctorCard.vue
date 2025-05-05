@@ -1,5 +1,5 @@
 <template>
-  <div class="doctor-card">
+  <div class="doctor-card" @click="$emit('click')">
     <img :src="pic || defaultAvatar" alt="医生头像" class="doctor-avatar" />
     <div class="doctor-info">
       <div class="doctor-name-title">
@@ -10,6 +10,19 @@
     </div>
   </div>
 </template>
+
+<script>
+export default {
+  emits: ['click'],
+  props: {
+    name: String,
+    title: String,
+    goodat: String,
+    pic: String,
+    web: String
+  }
+}
+</script>
 
 <script setup>
 import defaultAvatar from '@/assets/default_avatar.png'
